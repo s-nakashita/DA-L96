@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 
 def l_operator(f, u, dx, nu):
 # NB u is defined at integral index
-# u[i-1/2] = (u[i-1] + u[i]) / 2
-# u[i+1/2] = (u[i] + u[i+1]) / 2
-# u[i+1/2] - u[i-1/2] = (u[i+1] - u[i-1]) / 2
+# f[i-1/2] = (f[i-1] + f[i]) / 2
+# f[i+1/2] = (f[i] + f[i+1]) / 2
+# f[i+1/2] - f[i-1/2] = (f[i+1] - f[i-1]) / 2
     l = np.zeros_like(u)
     l[1:-1] = -0.5 * (f[2:] - f[0:-2]) / dx \
         + nu / dx**2 * (u[2:] - 2 * u[1:-1] + u[0:-2])
