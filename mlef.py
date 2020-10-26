@@ -20,10 +20,10 @@ def precondition(zmat):
 #    logger.debug("tmat={}".format(tmat))
 #    logger.debug("heinv={}".format(heinv))
 #    logger.debug("s={}".format(s))
+    print("s={}".format(s))
     return tmat, heinv
 
 
-zetak = []
 def callback(xk):
     global zetak
 #    logger.debug("xk={}".format(xk))
@@ -32,9 +32,11 @@ def callback(xk):
 
 def calc_j(zeta, *args):
     xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    nmem = zeta.size
     x = xc + gmat @ zeta
     ob = y - obs.h_operator(x, htype["operator"])
-    j = 0.5 * (zeta.transpose() @ heinv @ zeta + ob.transpose() @ rinv @ ob)
+    #j = 0.5 * (zeta.transpose() @ heinv @ zeta + ob.transpose() @ rinv @ ob)
+    j = 0.5 * ((nmem-1)*zeta.transpose() @ heinv @ zeta + ob.transpose() @ rinv @ ob)
 #    logger.debug("zeta.shape={}".format(zeta.shape))
 #    logger.debug("j={} zeta={}".format(j, zeta))
     return j
@@ -42,6 +44,7 @@ def calc_j(zeta, *args):
 
 def calc_grad_j(zeta, *args):
     xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    nmem = zeta.size
     x = xc + gmat @ zeta
     hx = obs.h_operator(x, htype["operator"])
     ob = y - hx
@@ -49,14 +52,18 @@ def calc_grad_j(zeta, *args):
         dh = obs.dhdx(x, htype["operator"]) @ pf
     else:
         dh = obs.h_operator(x[:, None] + pf, htype["operator"]) - hx[:, None]
-    return tmat @ zeta - dh.transpose() @ rinv @ ob
+    #return tmat @ zeta - dh.transpose() @ rinv @ ob
+    return (nmem-1)*tmat @ zeta - dh.transpose() @ rinv @ ob
 
 
-def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-8, 
-        disp=False, save_hist=False, save_dh=False, model="z08"):
+def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, 
+        disp=False, save_hist=False, save_dh=False,
+        infl=False, loc = False, model="z08", icycle=0):
     global zetak
+    zetak = []
     op = htype["operator"]
     pt = htype["perturbation"]
+    nmem = xf.shape[1]
     pf = xf - xc[:, None]
 #    logger.debug("norm(pf)={}".format(la.norm(pf)))
     if pt == "grad":
@@ -65,7 +72,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-8,
     else:
         dh = obs.h_operator(xf, op) - obs.h_operator(xc, op)[:, None]
     if save_dh:
-        np.save("{}_dh_{}_{}.npy".format(model, op, pt), dh)
+        np.save("{}_dh_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dh)
 #    logger.info("save_dh={}".format(save_dh))
     print("save_dh={}".format(save_dh))
     zmat = rmat @ dh
@@ -75,12 +82,15 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-8,
 #    logger.debug("tmat.shape={}".format(tmat.shape))
 #    logger.debug("heinv.shape={}".format(heinv.shape))
     gmat = pf @ tmat
+    #gmat = np.sqrt(nmem-1) * pf @ tmat
 #    logger.debug("gmat.shape={}".format(gmat.shape))
     x0 = np.zeros(xf.shape[1])
     args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype)
 #    logger.info("save_hist={}".format(save_hist))
-    print("save_hist={}".format(save_hist))
+    print("save_hist={} cycle{}".format(save_hist, icycle))
     if save_hist:
+        g = calc_grad_j(x0, *args_j)
+        print("g={}".format(g))
         res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
                 jac=calc_grad_j, options={'gtol':gtol, 'disp':disp}, callback=callback)
         jh = np.zeros(len(zetak))
@@ -89,9 +99,12 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-8,
             jh[i] = calc_j(np.array(zetak[i]), *args_j)
             g = calc_grad_j(np.array(zetak[i]), *args_j)
             gh[i] = np.sqrt(g.transpose() @ g)
-        np.savetxt("{}_jh_{}_{}.txt".format(model, op, pt), jh)
-        np.savetxt("{}_gh_{}_{}.txt".format(model, op, pt), gh)
-        cost_j(1000, xf.shape[1], model, *args_j)
+        np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
+        np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
+        if model=="z08":
+            cost_j(25, xf.shape[1], model, res.x, icycle, *args_j)
+        elif model=="l96":
+            cost_j(200, xf.shape[1], model, res.x, icycle, *args_j)
     else:
         res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
                 jac=calc_grad_j, options={'gtol':gtol, 'disp':disp})
@@ -112,21 +125,28 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-8,
     d = y - obs.h_operator(xa, op)
     chi2 = chi2_test(zmat, heinv, rmat, d)
     pa = pf @ tmat 
+    if infl:
+        print("==inflation==")
+        if pt == "mlef":
+            pa *= 1.1
+        else:
+            pa *= 1.1
     return xa, pa, chi2
 
-def cost_j(nx, nmem, model, *args):
+def cost_j(nx, nmem, model, xopt, icycle, *args):
     xc, pf, y, tmat, gmat, heinv, rinv, htype = args
     op = htype["operator"]
     pt = htype["perturbation"]
-    delta = np.linspace(-1000,1000,nx)
-    jval = np.zeros((len(delta),nmem))
+    delta = np.linspace(-nx,nx,4*nx)
+    jval = np.zeros((len(delta)+1,nmem))
+    jval[0,:] = xopt
     for k in range(nmem):
         x0 = np.zeros(nmem)
         for i in range(len(delta)):
             x0[k] = delta[i]
             j = calc_j(x0, *args)
-            jval[i,k] = j
-    np.save("{}_cJ_{}_{}.npy".format(model, op, pt), jval)
+            jval[i+1,k] = j
+    np.save("{}_cJ_{}_{}_cycle{}.npy".format(model, op, pt, icycle), jval)
 
 def chi2_test(zmat, heinv, rmat, d):
     p = d.size

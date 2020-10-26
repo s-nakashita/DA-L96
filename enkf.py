@@ -11,34 +11,47 @@ import obs
 #logger = logging.getLogger(__name__)
 
 
-def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, model="z08"):
+def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, \
+    save_dh=False, model="z08", icycle=0):
     op = htype["operator"]
     da = htype["perturbation"]
     JH = obs.dhdx(xf_, op)
     R = np.eye(y.size)*sig*sig
     nmem = xf.shape[1]
     dxf = xf - xf_[:,None]
+    if tlm:
+        dy = JH @ dxf
+    else:
+        dy = obs.h_operator(xf, op) - obs.h_operator(xf_, op)[:, None]
+    if save_dh:
+        np.save("{}_dh_{}_{}_cycle{}.npy".format(model, op, da, icycle), dy)
+    print("save_dh={} cycle{}".format(save_dh, icycle))
+
+    alpha = 1.35 # inflation parameter
     if infl:
-        print("==inflation==")
         if da != "letkf":
-            dxf *= 1.1
+            print("==inflation==")
+            dxf *= alpha
     pf = dxf @ dxf.T / (nmem-1)
-    if loc:
-        if da == "etkf":
-            print("==localization==")
-            dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=xf_.size)
-            pf = pf * l_mat
+    #if loc: # B-localization
+    #    if da == "etkf":
+    #        print("==B-localization==")
+    #        dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=xf_.size)
+    #        pf = pf * l_mat
     d = y - obs.h_operator(xf_, op)
 #    logger.debug("norm(pf)={}".format(la.norm(pf)))
     if da == "etkf":
-        dy = JH @ dxf
-        K = pf @ JH.T @ la.inv(JH @ pf @ JH.T + R)
-        #if loc:
-        #    dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=y.size)
-        #    K = K * l_mat
+        if tlm:
+            K = pf @ JH.T @ la.inv(JH @ pf @ JH.T + R)
+        else:
+            K = dxf @ dy.T @ la.inv(dy @ dy.T + (nmem-1)*R)
+        if loc: # K-localization
+            print("==K-localization==")
+            dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=y.size)
+            K = K * l_mat
         xa_ = xf_ + K @ d
         
-        TT = np.eye(nmem) - dy.T @ la.inv(dy@dy.T + (nmem-1)*R) @ dy
+        TT = la.inv( np.eye(nmem) + dy.T @ la.inv(R) @ dy / (nmem-1) )
         lam, v = la.eigh(TT)
         D = np.diag(np.sqrt(lam))
         T = v @ D
@@ -50,16 +63,25 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, model="z08"):
     elif da=="po":
         Y = np.zeros((y.size,nmem))
         err = np.random.normal(0, scale=sig, size=Y.size)
+        err_ = np.mean(err.reshape(Y.shape), axis=1)
         Y = y[:,None] + err.reshape(Y.shape)
-
-        K = pf @ JH.T @ la.inv(JH @ pf @ JH.T + R)
+        d_ = y + err_ - obs.h_operator(xf_, op)
+        if tlm:
+            K = pf @ JH.T @ la.inv(JH @ pf @ JH.T + R)
+        else:
+            K = dxf @ dy.T @ la.inv(dy @ dy.T + (nmem-1)*R)
         if loc:
             print("==localization==")
             dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=y.size)
             K = K * l_mat
-        xa = xf + K @ (Y - JH @ xf)
-        xa_ = xf_ + K @ d
-        pa = (np.eye(xf_.size) - K @ JH) @ pf
+        xa_ = xf_ + K @ d_
+        if tlm:
+            xa = xf + K @ (Y - JH @ xf)
+            pa = (np.eye(xf_.size) - K @ JH) @ pf
+        else:
+            HX = obs.h_operator(xf, op)
+            xa = xf + K @ (Y - HX)
+            pa = pf - K @ dy @ dxf.T / (nmem-1)
 
     elif da=="srf":
         I = np.eye(xf_.size)
@@ -92,29 +114,41 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, model="z08"):
     elif da=="letkf":
         #r0 = dx * 10.0 # local observation max distance
         sigma = 7.5
-        r0 = 2.0 * np.sqrt(10.0/3.0) * sigma
+        #r0 = 2.0 * np.sqrt(10.0/3.0) * sigma
+        r0 = 100.0 # all
+        if loc:
+            r0 = 5.0
         nx = xf_.size
         dist, l_mat = loc_mat(sigma, nx, ny=y.size)
+        print(dist[0])
         xa = np.zeros_like(xf)
         xa_ = np.zeros_like(xf_)
         dxa = np.zeros_like(dxf)
         E = np.eye(nmem)
+        hx = obs.h_operator(xf_, op)
         if infl:
             print("==inflation==")
-            E /= 1.2
+            E /= alpha
         for i in range(nx):
             far = np.arange(y.size)
             far = far[dist[i]>r0]
+            print("number of assimilated obs.={}".format(y.size - len(far)))
             yi = np.delete(y,far)
-            Hi = np.delete(JH,far,axis=0)
+            if tlm:
+                Hi = np.delete(JH,far,axis=0)
+                di = yi - Hi @ xf_
+                dyi = Hi @ dxf
+            else:
+                hxi = np.delete(hx,far)
+                di = yi - hxi
+                dyi = np.delete(dy,far,axis=0)
             Ri = np.delete(R,far,axis=0)
             Ri = np.delete(Ri,far,axis=1)
-            di = yi - Hi @ xf_
-            dyi = Hi @ dxf
             if loc:
                 print("==localization==")
                 diagR = np.diag(Ri)
-                Ri = np.diag(diagR/l_mat[i])
+                l = np.delete(l_mat[i],far)
+                Ri = np.diag(diagR/l)
             R_inv = la.inv(Ri)
             
             A = (nmem-1)*E + dyi.T @ R_inv @ dyi
@@ -129,11 +163,14 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, model="z08"):
         pa = dxa@dxa.T/(nmem-1)
         
     innv = y - obs.h_operator(xa_, op)
-    if len(innv.shape) > 1:
-        Rsim = innv.reshape(innv.size,1) @ d[None,:]
-    else:
-        Rsim = innv[:,None] @ d[None,:]
-    chi2 = np.mean(np.diag(Rsim)) / sig / sig
+    p = innv.size
+    G = JH @ pf @ JH.T + R 
+    chi2 = innv.T @ la.inv(G) @ innv / p
+    #if len(innv.shape) > 1:
+    #    Rsim = innv.reshape(innv.size,1) @ d[None,:]
+    #else:
+    #    Rsim = innv[:,None] @ d[None,:]
+    #chi2 = np.mean(np.diag(Rsim)) / sig / sig
 
     return xa, xa_, pa, chi2
 
