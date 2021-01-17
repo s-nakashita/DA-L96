@@ -20,13 +20,13 @@ x = np.arange(na) + 1
 y = np.ones(x.shape)
 fig, ax = plt.subplots()
 for pt in perts:
-    f = "{}_chi_{}_{}.txt".format(model, op, pt)
+    f = "{}_dof_{}_{}.txt".format(model, op, pt)
     if not os.path.isfile(f):
         print("not exist {}".format(f))
         continue
-    chi = np.loadtxt(f)
-    ax.plot(x, chi, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
-ax.plot(x, y, linestyle="dotted", color='tab:purple')
+    dof = np.loadtxt(f)
+    ax.plot(x, dof, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
+#ax.plot(x, y, linestyle="dotted", color='tab:purple')
 ax.set_yscale("log")
 #if np.max(chi) > 1000.0:
 #    ax.set_ylim(0.1, 1000.0)
@@ -34,9 +34,9 @@ ax.set_yscale("log")
 #if np.max(chi) > 10000.0:
 #    ax.set_ylim(0.1, 10000.0)
 #    ax.set_yticks([1,10,100,1000,10000])
-ax.set(xlabel="analysis cycle", ylabel="Chi2",
+ax.set(xlabel="analysis cycle", ylabel="DOF",
         title=op)
 ax.set_xticks(x[::len(x)//10])
 ax.set_xticks(x[::len(x)//20], minor=True)
 ax.legend()
-fig.savefig("{}_chi_{}.png".format(model, op))
+fig.savefig("{}_dof_{}.png".format(model, op))

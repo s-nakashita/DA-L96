@@ -14,6 +14,7 @@ def l_operator(f, u, dx, nu):
 
 def step(u, dx, dt, nu):
     f = 0.5 * u**2
+    #print("f={}".format(f))
     u1 = u + dt * l_operator(f, u, dx, nu)
     return 0.5 * (u + u1 + dt * l_operator(f, u1, dx, nu))
 

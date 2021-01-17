@@ -22,7 +22,7 @@ x = np.linspace(-2.0, 2.0, nx)
 dx = x[1] - x[0]
 np.savetxt("x.txt", x)
 
-nmem =   20 # ensemble size
+nmem =   40 # ensemble size
 t0off =   8 # initial offset between adjacent members
 t0c =    500 # t0 for control
             # t0 for ensemble members
@@ -34,6 +34,8 @@ namax = 1460 # max number of analysis (1 year)
 
 sigma = {"linear": 1.0, "quadratic": 8.0e-1, "cubic": 7.0e-2, \
     "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0}
+#sigma = {"linear": 1.0, "quadratic": 1.0, "cubic": 1.0, \
+#    "quadratic-nodiff": 1.0, "cubic-nodiff": 1.0, "test":1.0}
 htype = {"operator": "linear", "perturbation": "mlef"}
 linf = False
 lloc = False
@@ -72,7 +74,7 @@ def get_true_and_obs(na, nx, sigma, op):
 
     #obs = pd.read_csv("observation_data.csv")
     #y = obs.values.reshape(na,nx)
-    y = h_operator(add_noise(xt, sigma), op)
+    y = add_noise(h_operator(xt, op), sigma)
 
     return xt, y
 
@@ -84,10 +86,13 @@ def init_ens(nx,nmem,t0c,t0f,dt,F,opt):
     if(opt==0): # random
         print("spin up max = {}".format(t0c))
         np.random.seed(514)
-        X0 = np.random.normal(0.0,1.0,size=(nx,nmem)) + X0c[:, None]
         for j in range(t0c):
-            X0 = step(X0, dt, F)
+            #X0 = step(X0, dt, F)
             X0c = step(X0c, dt, F)
+        X0 = np.random.normal(0.0,1.0,size=(nx,nmem)) + X0c[:, None]
+        #for j in range(t0c):
+        #    X0 = step(X0, dt, F)
+        #    X0c = step(X0c, dt, F)
     else: # lagged forecast
         print("spin up max = {}".format(maxiter))
         X0 = np.zeros((nx,nmem))
@@ -117,21 +122,22 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False, \
     #logger.info("hist={}".format(hist))
     print("hist={}".format(hist))
     if htype["perturbation"] == "mlef" or htype["perturbation"] == "grad":
-        ua, pa, chi2= mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
+        ua, pa, chi2, ds= mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
             save_hist=hist, save_dh=dh, \
             infl = infl, loc = loc, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
     else:
         u_ = np.mean(u[:,1:],axis=1)
-        ua, ua_, pa, chi2 = enkf.analysis(u[:, 1:], u_, y, sig, dx, htype, \
+        ua, ua_, pa, chi2, ds = enkf.analysis(u[:, 1:], u_, y, sig, dx, htype, \
             infl = infl, loc = loc, tlm=tlm, \
             save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua_
         u[:, 1:] = ua
-    return u, pa, chi2
+    return u, pa, chi2, ds
 
 def plot_initial(uc, u, ut, lag, model):
+    import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     x = np.arange(ut.size) + 1
     ax.plot(x, ut, label="true")
@@ -152,6 +158,11 @@ if __name__ == "__main__":
     xt, obs = get_true_and_obs(namax, nx, sigma[op], op)
     np.save("{}_ut.npy".format(model), xt[:na,:])
     x0c, x0 = init_ens(nx,nmem,t0c,t0f,dt,F,opt=0)
+    if pt == "mlef" or pt == "grad":
+        pf = (x0 - x0c[:,None]) @ (x0 - x0c[:,None]).T
+    else:
+        pf = (x0 - np.mean(x0,axis=1).reshape(-1,1)) @ (x0 - np.mean(x0,axis=1).reshape(-1,1)).T/(nmem-1)
+    print("pf={}".format(pf))
     u = np.zeros((nx, nmem+1))
     u[:, 0] = x0c
     u[:, 1:] = x0
@@ -168,12 +179,12 @@ if __name__ == "__main__":
         if i in range(0,4):
             #logger.info("first analysis")
             print("cycle{} analysis".format(i))
-            u, pa, chi2 = analysis(u, y, rmat, rinv, sigma[op], htype, \
+            u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
                 hist=True, dh=True, \
                 infl=linf, loc=lloc, tlm=ltlm,\
                 model=model, icycle=i)
         else:
-            u, pa, chi2 = analysis(u, y, rmat, rinv, sigma[op], htype, \
+            u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
                 infl=linf, loc=lloc, tlm=ltlm, \
                 model=model, icycle=i)
         xa[i, :, :] = u
