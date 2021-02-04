@@ -6,7 +6,7 @@ import numpy.linalg as la
 from numpy import random
 
 
-def h_operator(x, operator="linear"):
+def h_operator(x, operator="linear", gamma=1):
     if operator == "linear":
         return x
     elif operator == "quadratic":
@@ -22,9 +22,9 @@ def h_operator(x, operator="linear"):
     elif operator == "quartic-nodiff":
         return np.where(x >= 0.5, x**4, -x**4)
     elif operator == "test":
-        return 0.5*x*(1.0+0.1*np.abs(x))
+        return 0.5*x*(1.0+np.power(0.1*np.abs(x), (gamma-1)))
 
-def dhdx(x, operator="linear"):
+def dhdx(x, operator="linear", gamma=1):
     if operator == "linear":
         return np.diag(np.ones(x.size))
     elif operator == "quadratic":
@@ -40,7 +40,7 @@ def dhdx(x, operator="linear"):
     elif operator == "quartic-nodiff":
         return np.diag(np.where(x >= 0.5, 4*x**3, -4*x**3))
     elif operator == "test":
-        return np.diag(0.5+0.1*np.abs(x))
+        return np.diag(0.5+0.5*gamma*np.power(0.1*np.abs(x), gamma-1))
 
 
 def add_noise(x, sigma):

@@ -8,16 +8,17 @@ model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
-    #perts = ["mlef", "grad"]
-    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
+    #perts = ["mlef", "mlefb"]
+    perts = ["mlef", "grad", "mlefb", "gradb", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
     linestyle = {"mlef":"solid", "grad":"dashed",
+     "mlefb":"solid", "gradb":"dashed",
      "etkf-fh":"solid", "etkf-jh":"dashed"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"mlefb":'tab:cyan',"gradb":'tab:pink',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
     #na = 20
-    sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
-    "quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
-    #sigma = {"linear": 8.0e-2, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-2, \
-    #"quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-2}
+    #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
+    #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
+    sigma = {"linear": 8.0e-2, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-2, \
+    "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-2}
     x = np.arange(na+1)
     #x = np.arange(na) + 1
 elif model == "l96":
@@ -66,8 +67,8 @@ ax.plot(x, y, linestyle="dotted", color='tab:purple')
 plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
 ax.set(xlabel="analysis cycle", ylabel="RMSE",
         title=op)
-#if model == "z08":
-#    ax.set_ylim(-0.01,0.2)
+if model == "z08":
+    ax.set_ylim(-0.01,0.2)
 ax.set_xticks(x[::len(x)//10])
 ax.set_xticks(x[::len(x)//20], minor=True)
 plt.rcParams['legend.fontsize'] = 16 # fontsize arrange
