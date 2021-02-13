@@ -22,9 +22,13 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     nmem = xf.shape[1]
     dxf = xf - xf_[:,None]
     if tlm:
-        dy = JH @ dxf
+        #dy = JH @ dxf
+        dy = np.zeros((y.size,nmem))
+        for i in range(nmem):
+            jhi = obs.dhdx(xf[:,i], op, ga)
+            dy[:,i] = jhi @ dxf[:,i]
     else:
-        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
         dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
     hes = np.eye(nmem) + dy.T @ rinv @ dy
     condh = la.cond(hes)
@@ -53,7 +57,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     #        print("==B-localization==")
     #        dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=xf_.size)
     #        pf = pf * l_mat
-    #d = y - obs.h_operator(xf_, op, ga)
+    #d = y - np.squeeze(obs.h_operator(xf_, op, ga))
     d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     if save_dh:
         print("save dxf")

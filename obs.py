@@ -23,6 +23,13 @@ def h_operator(x, operator="linear", gamma=1):
         return np.where(x >= 0.5, x**4, -x**4)
     elif operator == "test":
         return 0.5*x*(1.0+np.power(0.1*np.abs(x), (gamma-1)))
+    elif operator == "speed":
+        s = np.sqrt(x[0]**2 + x[1]**2)
+        if x.ndim == 1:
+            return np.array([s])
+        else:
+            return s.reshape(1,-1)
+        
 
 def dhdx(x, operator="linear", gamma=1):
     if operator == "linear":
@@ -41,6 +48,9 @@ def dhdx(x, operator="linear", gamma=1):
         return np.diag(np.where(x >= 0.5, 4*x**3, -4*x**3))
     elif operator == "test":
         return np.diag(0.5+0.5*gamma*np.power(0.1*np.abs(x), gamma-1))
+    elif operator == "speed":
+        s = np.sqrt(x[0]**2 + x[1]**2)
+        return x.reshape(1,-1)/s
 
 
 def add_noise(x, sigma):
