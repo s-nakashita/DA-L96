@@ -6,6 +6,7 @@ from burgers import step
 from obs import add_noise, h_operator
 import mlef
 import mlefb
+import mleft
 #import mlef05 as mlef
 import enkf
 import matplotlib.pyplot as plt
@@ -56,13 +57,13 @@ if len(sys.argv) > 5:
     if sys.argv[5] == "F":
         ltlm = False
 obs_s = sigma[htype["operator"]]
-#if len(sys.argv) > 6:
-#    #t0off = int(sys.argv[6])
-#    obs_s = float(sys.argv[6])
-maxiter = None
 if len(sys.argv) > 6:
-    #htype["gamma"] = int(sys.argv[7])
-    maxiter = int(sys.argv[6])
+    #t0off = int(sys.argv[6])
+    obs_s = float(sys.argv[6])
+maxiter = None
+#if len(sys.argv) > 6:
+#    #htype["gamma"] = int(sys.argv[7])
+#    maxiter = int(sys.argv[6])
 t0m = [t0c + t0off//2 + t0off * i for i in range(-nmem//2, nmem//2)]
 t0f = [t0c] + t0m
 #logger.info("nmem={} t0true={} t0f={}".format(nmem, t0true, t0f))
@@ -130,21 +131,26 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
     #logger.info("hist={}".format(hist))
     print("hist={}".format(hist))
     if htype["perturbation"] == "mlef" or htype["perturbation"] == "grad":
-        ua, pa, chi2, ds = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+        ua, pa, chi2, ds, condh = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
             maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
-    elif htype["perturbation"] == "mlefb" or htype["perturbation"] == "gradb":
+    elif htype["perturbation"] == "mlefb" :
         u_ = np.mean(u,axis=1)
-        ua, ua_, pa, chi2, ds = mlefb.analysis(u, u_, y, rmat, rinv, htype,\
+        ua, ua_, pa, chi2, ds, condh = mlefb.analysis(u, u_, y, rmat, rinv, htype,\
+             maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+        u = ua
+    elif htype["perturbation"] == "mleft" :
+        u_ = np.mean(u,axis=1)
+        ua, ua_, pa, chi2, ds, condh = mleft.analysis(u, u_, y, rmat, rinv, htype,\
              maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u = ua
     else:
         u_ = np.mean(u,axis=1)
-        ua, ua_, pa, chi2, ds = enkf.analysis(u, u_, y, sig, dx, htype,\
+        ua, ua_, pa, chi2, ds, condh = enkf.analysis(u, u_, y, sig, dx, htype,\
              save_dh=dh, infl=infl, loc=loc, tlm=tlm, model=model, icycle=icycle)
         u = ua
-    return u, pa, chi2, ds
+    return u, pa, chi2, ds, condh
 
 def plot_initial(u, ut, lag, model):
     fig, ax = plt.subplots()
@@ -203,19 +209,24 @@ if __name__ == "__main__":
     dof = np.zeros(na)
     dpa = np.zeros(na)
     ndpa = np.zeros(na)
+    #if pt == "mlef" or pt == "mlefb":
+    #    cond = np.zeros((na,2))
+    #else:
+    cond = np.zeros(na)
+    #checkg = np.zeros(na)
     for i in range(na):
         #y = gen_obs(ut[i,], obs_s, op)
         y = obs[i]
-        if i in range(1):
+        if i in range(4):
             #logger.info("first analysis")
             print("cycle{} analysis".format(i))
-            u, pa, chi2, ds = analysis(u, y, rmat, rinv, obs_s, htype, \
+            u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
                 maxiter=maxiter, \
                 hist=True, dh=True,\
                 infl=linf, loc=lloc, tlm=ltlm,\
                 model=model, icycle=i)
         else:
-            u, pa, chi2, ds = analysis(u, y, rmat, rinv, obs_s, htype, \
+            u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
                 maxiter=maxiter, infl=linf, loc=lloc, tlm=ltlm, model=model, icycle=i)
         #print("ua={}".format(u))
         ua[i, :, :] = u
@@ -228,6 +239,11 @@ if __name__ == "__main__":
             ndpa[i] = np.sqrt(np.mean(np.sum(pa) - np.sum(np.diag(pa))))
         chi[i] = chi2
         dof[i] = ds
+        #if pt == "mlef" or pt == "mlefb":
+        #    cond[i,:] = condh
+        #else:
+        cond[i] = condh
+        #checkg[i] = cg
         if i < na-1:
             u = forecast(u, dx, dt, nu, nt, htype)
             uf[i+1, :, :] = u
@@ -249,12 +265,14 @@ if __name__ == "__main__":
     np.savetxt("{}_dpf_{}_{}.txt".format(model, op, pt), dpf)
     np.savetxt("{}_dpa_{}_{}.txt".format(model, op, pt), dpa)
     np.savetxt("{}_ndpa_{}_{}.txt".format(model, op, pt), ndpa)
-    #if len(sys.argv) > 6:
-    #    oberr = str(int(obs_s*1e4)).zfill(4)
-    #    np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
-    #    np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)
-    #    np.savetxt("{}_dof_{}_{}_oberr{}.txt".format(model, op, pt, oberr), dof)
+    if len(sys.argv) > 6:
+        oberr = str(int(obs_s*1e4)).zfill(4)
+        np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
+        np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)
+        np.savetxt("{}_dof_{}_{}_oberr{}.txt".format(model, op, pt, oberr), dof)
     #else:
-    np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
-    np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
-    np.savetxt("{}_dof_{}_{}.txt".format(model, op, pt), dof)
+    #np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
+    #np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
+    #np.savetxt("{}_dof_{}_{}.txt".format(model, op, pt), dof)
+    #np.savetxt("{}_condh_{}_{}.txt".format(model, op, pt), cond)
+    #np.savetxt("{}_checkg_{}_{}.txt".format(model, op, pt), checkg)

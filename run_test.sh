@@ -1,13 +1,13 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
 operators="test"
-perturbations="mlef etkf" # po srf letkf"
+perturbations="mlef mlefb mleft etkf" # po srf letkf"
 #perturbations="mlef grad etkf-jh etkf-fh"
-na=500 # Number of assimilation cycle
+na=800 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
-exp="test_etkf"
+exp="test_mlefb"
 echo ${exp}
 src=$(pwd)
 rm -rf ${exp}

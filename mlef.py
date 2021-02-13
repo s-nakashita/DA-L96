@@ -22,11 +22,13 @@ def precondition(zmat):
     D = np.diag(1.0/(np.sqrt(lam + np.ones(lam.size))))
     tmat = v @ D @ v.T
     heinv = tmat @ tmat.T
+    hes = v @ np.diag(lam + np.ones(lam.size)) @ v.T
 #    logger.debug("tmat={}".format(tmat))
 #    logger.debug("heinv={}".format(heinv))
 #    logger.debug("s={}".format(s))
     print("eigenvalues={}".format(lam))
-    return tmat, heinv
+    print("cond(hessian)={}".format(la.cond(hes)))
+    return tmat, heinv, la.cond(hes)
 
 
 def callback(xk):
@@ -71,6 +73,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     ga = htype["gamma"]
     nmem = xf.shape[1]
     pf = xf - xc[:, None]
+    #condh = np.zeros(2)
     if infl:
         """
         if op == "linear" or op == "test":
@@ -111,7 +114,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     print("save_dh={}".format(save_dh))
     zmat = rmat @ dh
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, heinv = precondition(zmat)
+    tmat, heinv, condh = precondition(zmat)
     if icycle == 0:
         print("tmat={}".format(tmat))
         print("heinv={}".format(heinv))
@@ -125,9 +128,11 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype)
 #    logger.info("save_hist={}".format(save_hist))
     print("save_hist={} cycle{}".format(save_hist, icycle))
+    cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
+    print("check_grad={}".format(cg))
     if save_hist:
-        g = calc_grad_j(x0, *args_j)
-        print("g={}".format(g))
+        #g = calc_grad_j(x0, *args_j)
+        #print("g={}".format(g))
         res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
                 jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)
         #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
@@ -172,7 +177,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
         dh = obs.h_operator(xa[:, None] + pf, op, ga) - obs.h_operator(xa, op, ga)[:, None]
     zmat = rmat @ dh
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, heinv = precondition(zmat)
+    tmat, heinv, dum = precondition(zmat)
     pa = pf @ tmat 
     if save_dh:
         np.save("{}_pa_{}_{}_cycle{}.npy".format(model, op, pt, icycle), pa)
@@ -204,7 +209,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     #    print("==inflation==, alpha={}".format(alpha))
     #    pa *= alpha
         
-    return xa, pa, chi2, ds
+    return xa, pa, chi2, ds, condh
 
 def cost_j(nx, nmem, model, xopt, icycle, *args):
     xc, pf, y, tmat, gmat, heinv, rinv, htype = args

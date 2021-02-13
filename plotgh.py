@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 op = sys.argv[1]
 model = sys.argv[2]
-perts = ["mlef", "grad"]
+na = int(sys.argv[3])
+perts = ["mlef", "mlefb", "mleft"]
 for i in range(4):
     fig, ax = plt.subplots()
     for pt in perts:
@@ -15,5 +16,6 @@ for i in range(4):
     ax.set_xticks(x[::5])
     ax.set_xticks(x, minor=True)
     ax.set_xlim(1, 20)
+    ax.set_yscale("log")
     ax.legend()
     fig.savefig("{}_gh_{}_cycle{}.png".format(model, op, i))

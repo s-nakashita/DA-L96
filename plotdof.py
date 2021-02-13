@@ -12,10 +12,13 @@ if model == "l96" and op == "linear":
     perts = ["mlef", "etkf", "po", "srf", "letkf"]
     #na = 100
 elif model == "z08":
-    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
+    perts = ["mlef", "grad", "mlefb", "mleft", "etkf", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
     linestyle = {"mlef":"solid", "grad":"dashed",
+     "mlefb":"solid", "mleft":"solid", "etkf":"solid",
      "etkf-fh":"solid", "etkf-jh":"dashed"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',
+    "etkf":'tab:green', "mlefb":"tab:cyan", "mleft":"tab:pink",
+    "etkf-fh":'tab:green',"etkf-jh":'tab:red'}
 x = np.arange(na) + 1
 y = np.ones(x.shape)
 fig, ax = plt.subplots()

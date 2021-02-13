@@ -5,6 +5,8 @@ import pandas as pd
 from lorenz import step
 from obs import add_noise, h_operator
 import mlef
+import mlefb
+import mleft
 import enkf
 
 #logging.config.fileConfig("logging_config.ini")
@@ -131,14 +133,28 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False, \
     #logger.info("hist={}".format(hist))
     print("hist={}".format(hist))
     if htype["perturbation"] == "mlef" or htype["perturbation"] == "grad":
-        ua, pa, chi2, ds= mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
+        ua, pa, chi2, ds, condh = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
             save_hist=hist, save_dh=dh, \
             infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
+    elif htype["perturbation"] == "mlefb":
+        u_ = np.mean(u, axis=1)
+        ua, ua_, pa, chi2, ds, condh = mlefb.analysis(u, u_, y, rmat, rinv, htype, \
+            save_hist=hist, save_dh=dh, \
+            infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
+        u[:, :] = ua
+        #u[:, 1:] = ua[:, None] + pa
+    elif htype["perturbation"] == "mleft":
+        u_ = np.mean(u, axis=1)
+        ua, ua_, pa, chi2, ds, condh = mleft.analysis(u, u_, y, rmat, rinv, htype, \
+            save_hist=hist, save_dh=dh, \
+            infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
+        u[:, :] = ua
+        #u[:, 1:] = ua[:, None] + pa
     else:
         u_ = np.mean(u,axis=1)
-        ua, ua_, pa, chi2, ds = enkf.analysis(u, u_, y, sig, dx, htype, \
+        ua, ua_, pa, chi2, ds, condh = enkf.analysis(u, u_, y, sig, dx, htype, \
             infl = infl, loc = loc, tlm=tlm, infl_parm = infl_parm, \
             save_dh=dh, model=model, icycle=icycle)
         u[:, :] = ua

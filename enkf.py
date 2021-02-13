@@ -24,9 +24,10 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     if tlm:
         dy = JH @ dxf
     else:
-        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
-        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
-    
+        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
+        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+    hes = np.eye(nmem) + dy.T @ rinv @ dy
+    condh = la.cond(hes)
     # inflation parameter
     """
     if op == "linear" or op == "test":
@@ -52,8 +53,8 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     #        print("==B-localization==")
     #        dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=xf_.size)
     #        pf = pf * l_mat
-    d = y - obs.h_operator(xf_, op, ga)
-    #d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
+    #d = y - obs.h_operator(xf_, op, ga)
+    d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     if save_dh:
         print("save dxf")
         np.save("{}_dxf_{}_{}_cycle{}.npy".format(model, op, da, icycle), dxf)
@@ -269,8 +270,8 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         print("save pa")
         np.save("{}_pa_{}_{}_cycle{}.npy".format(model, op, da, icycle), pa)
 
-    innv = y - obs.h_operator(xa_, op, ga)
-    #innv = y - np.mean(obs.h_operator(xa, op, ga), axis=1)
+    #innv = y - obs.h_operator(xa_, op, ga)
+    innv = y - np.mean(obs.h_operator(xa, op, ga), axis=1)
     p = innv.size
     G = dy @ dy.T + R 
     chi2 = innv.T @ la.inv(G) @ innv / p
@@ -282,7 +283,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     #    Rsim = innv[:,None] @ d[None,:]
     #chi2 = np.mean(np.diag(Rsim)) / sig / sig
 
-    return xa, xa_, pa, chi2, ds
+    return xa, xa_, pa, chi2, ds, condh
 
 def loc_mat(sigma, nx, ny):
     dist = np.zeros((nx,ny))

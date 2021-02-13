@@ -8,12 +8,12 @@ model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
-    #perts = ["mlef", "mlefb"]
-    perts = ["mlef", "grad", "mlefb", "gradb", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
+    perts = ["mlef", "mlefb", "mleft", "etkf"]
+    #perts = ["mlef", "grad", "mlefb", "gradb", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
     linestyle = {"mlef":"solid", "grad":"dashed",
-     "mlefb":"solid", "gradb":"dashed",
+     "mlefb":"solid", "mleft":"solid", "etkf":"solid",
      "etkf-fh":"solid", "etkf-jh":"dashed"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"mlefb":'tab:cyan',"gradb":'tab:pink',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"mlefb":'tab:cyan',"mleft":'tab:pink',"etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
@@ -22,14 +22,13 @@ if model == "z08" or model == "z05":
     x = np.arange(na+1)
     #x = np.arange(na) + 1
 elif model == "l96":
-    if op == "linear":
-        perts = ["mlef", "etkf", "po", "srf", "letkf"]
-    else:
-        perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
+    perts = ["mlef", "mlefb", "mleft", "etkf", "po", "srf", "letkf"]
     #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-    linestyle = {"mlef":"solid", "grad":"solid", "etkf":"solid", "po":'solid',\
+    linestyle = {"mlef":"solid", "grad":"solid", "mlefb":"solid", "mleft":"solid", \
+        "etkf":"solid", "po":'solid',\
         "srf":"solid", "letkf":"solid"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf":'tab:green', "po":'tab:red',\
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"mlefb":'tab:cyan',"mleft":'tab:pink',\
+        "etkf":'tab:green', "po":'tab:red',\
         "srf":"tab:pink", "letkf":"tab:purple", "kf":"tab:cyan", "var":"tab:olive",\
         "var4d":"tab:brown"    }
     #perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]

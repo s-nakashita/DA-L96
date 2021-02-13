@@ -6,7 +6,7 @@ fi
 model=${1} #z08,l96
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
 #if [ $model=z08 ]; then
-perturbations="mlef grad mlefb gradb etkf-jh etkf-fh"
+perturbations="mlef grad mlefb gradb etkf etkf-jh etkf-fh"
 #fi
 #if [ $model="l96" ]; then
 #    perturbations="mlef grad etkf"

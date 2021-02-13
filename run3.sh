@@ -3,7 +3,7 @@
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
 operators="quadratic cubic quadratic-nodiff cubic-nodiff" # quartic quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
-perturbations="mlef mlefb"
+perturbations="mlef mlefb mleft etkf"
 na=20
 linf="F"
 lloc="F"
@@ -76,7 +76,7 @@ for op in ${operators}; do
     #python calc_mean.py chi ${na} ${ivar} ${count}
     #mv chi${ivar}_mean.txt z08_chi_${op}_${pt}.txt
     #rm chi${ivar}_*.txt
-    ./output.sh ${exp} z08 ${op} ${pt} ${pert}
+    #./output.sh ${exp} z08 ${op} ${pt} ${pert}
   done # for perturbation
   rm obs*.npy
   #python plotcJb+o.py ${op} z08 ${na}
@@ -84,8 +84,13 @@ for op in ${operators}; do
   #  mv z08_cJb_${op}_cycle${i}.png z08_cJb_${op}_cycle${i}_${exp}${ivar}.png
   #  mv z08_cJo_${op}_cycle${i}.png z08_cJo_${op}_cycle${i}_${exp}${ivar}.png
   #done
-  ./copy.sh z08 ${exp} ${op}
+  #./copy.sh z08 ${exp} ${op}
   ./plot.sh z08 ${op} ${na} ${src}
+  #for pt in ${perturbations}; do
+  #  convert -delay 10 z08_ua_${op}_${pt}_cycle*.png z08_ua_${op}_${pt}.gif
+  #done
+  #python ${src}/plote.py ${op} z08 ${na}
+  #python ${src}/plotcg.py ${op} z08 ${na}
 #./copy.sh z08 ${exp} ${op}
 #python plotcj.py ${op} z08 ${na}
 #for i in $(seq 0 3); do

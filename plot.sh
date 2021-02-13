@@ -10,7 +10,8 @@ if [ $# -gt 3 ]; then
   na=${3}
   src=${4}
 fi
-plots="e chi ua k cj trpa dy"
+#plots="e chi ua k cj trpa dy"
+plots="e jh gh condh chi dof"
 #for var in e dh du jh gh chi; do
 for var in ${plots}; do
   echo ${op} ${var}

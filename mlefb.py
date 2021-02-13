@@ -23,11 +23,14 @@ def precondition(zmat):
     tmat = v @ D @ v.T
     Dinv = np.diag((np.sqrt(lam + np.ones(lam.size))))
     tinv = v @ Dinv @ v.T
+    heinv = tmat @ tmat.T
+    hes = tinv @ tinv.T
 #    logger.debug("tmat={}".format(tmat))
 #    logger.debug("heinv={}".format(heinv))
 #    logger.debug("s={}".format(s))
     print("eigenvalues={}".format(lam))
-    return tmat, tinv
+    print("cond(hessian)={}".format(la.cond(hes)))
+    return tmat, tinv, heinv, la.cond(hes)
 
 
 def callback(xk):
@@ -41,10 +44,9 @@ def calc_j(w, *args):
     #xf_, dxf, y, tmat, gmat, heinv, rinv, htype = args
     nmem = w.size
     x = xf_ + dxf @ w
-    if htype["perturbation"] == "mlefb":
-        emat = x[:, None] + eps*dxf
-        hemat = obs.h_operator(emat, htype["operator"], htype["gamma"])
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
+    emat = x[:, None] + eps*dxf
+    hemat = obs.h_operator(emat, htype["operator"], htype["gamma"])
+    dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
     ob = y - np.mean(hemat, axis=1)
     rinv = rmat @ rmat.T
     j = 0.5 * (w.transpose() @ w + ob.transpose() @ rinv @ ob)
@@ -59,10 +61,9 @@ def calc_grad_j(w, *args):
     #xf_, dxf, y, tmat, gmat, heinv, rinv, htype = args
     nmem = w.size
     x = xf_ + dxf @ w
-    if htype["perturbation"] == "mlefb":
-        emat = x[:, None] + eps*dxf
-        hemat = obs.h_operator(emat, htype["operator"], htype["gamma"])
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
+    emat = x[:, None] + eps*dxf
+    hemat = obs.h_operator(emat, htype["operator"], htype["gamma"])
+    dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
     ob = y - np.mean(hemat, axis=1)
     rinv = rmat @ rmat.T
     return w - dy.transpose() @ rinv @ ob
@@ -79,8 +80,8 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     ga = htype["gamma"]
     nmem = xf.shape[1]
     dxf = (xf - xf_[:, None])/np.sqrt(nmem-1)
+    #condh = np.zeros(2)
     eps = 1e-4 # Bundle parameter
-    tmat = np.eye(nmem) # Transform matrix
     if infl:
         """
         if op == "linear" or op == "test":
@@ -107,18 +108,10 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
         l_sig = 4.0
         print("==localization==, l_sig={}".format(l_sig))
         dxf = pfloc(dxf, l_sig, save_dh, model, op, pt, icycle)
-    if pt == "mlefb": # Bundle
-#        logger.debug("dhdx.shape={}".format(obs.dhdx(xc, op).shape))
-        emat = xf_[:, None] + eps*dxf
-        hemat = obs.h_operator(emat, op, ga)
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
+    emat = xf_[:, None] + eps*dxf
+    hemat = obs.h_operator(emat, op, ga)
+    dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
         #dh = obs.dhdx(xf_, op, ga) @ dxf * np.sqrt(nmem-1)
-    elif pt == "mleft": # Transform
-        emat = xf_[:, None] + np.sqrt(nmem-1) * dxf @ tmat
-        hemat = obs.h_operator(emat, op, ga)
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) @ la.inv(tmat) / np.sqrt(nmem-1)
-    else:
-        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
     if save_dh:
         #np.save("{}_dh_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dh)
         np.save("{}_dy_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dy)
@@ -128,7 +121,7 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     print("save_dh={}".format(save_dh))
     zmat = rmat @ dy
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, tinv = precondition(zmat)
+    tmat, tinv, heinv, condh = precondition(zmat)
     if icycle == 0:
         print("tmat={}".format(tmat))
         print("tinv={}".format(tinv))
@@ -142,9 +135,11 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     args_j = (xf_, dxf, y, precondition, eps, rmat, htype)
 #    logger.info("save_hist={}".format(save_hist))
     print("save_hist={} cycle{}".format(save_hist, icycle))
+    cg = spo.check_grad(calc_j, calc_grad_j, w0, *args_j)
+    print("check_grad={}".format(cg))
     if save_hist:
-        g = calc_grad_j(w0, *args_j)
-        print("g={}".format(g))
+        #g = calc_grad_j(w0, *args_j)
+        #print("g={}".format(g))
         res = spo.minimize(calc_j, w0, args=args_j, method='BFGS', \
                 jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)
         #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
@@ -181,24 +176,16 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
             res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
     print("x={}".format(dxf @ res.x))
     xa_ = xf_ + dxf @ res.x
+    #condh[1] = la.cond(la.inv(res.hess_inv))
     if save_dh:
         np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dxf@res.x)
-    if pt == "mlefb": # Bundle
-#        logger.debug("dhdx.shape={}".format(obs.dhdx(xc, op).shape))
-        emat = xa_[:, None] + eps*dxf
-        hemat = obs.h_operator(emat, op, ga)
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
-        #dh = obs.dhdx(xf_, op, ga) @ dxf * np.sqrt(nmem-1)
-    elif pt == "mleft": # Transform
-        emat = xa_[:, None] + np.sqrt(nmem-1) * dxf @ tmat
-        hemat = obs.h_operator(emat, op, ga)
-        dy = (hemat - np.mean(hemat, axis=1)[:, None]) @ la.inv(tmat) / np.sqrt(nmem-1)
-    else:
-        dy = obs.h_operator(xa_[:, None] + dxf * np.sqrt(nmem-1), op, ga) - np.mean(obs.h_operator(xa_[:, None] + dxf * np.sqrt(nmem-1), op, ga), axis=1)[:, None]
+    emat = xa_[:, None] + eps*dxf
+    hemat = obs.h_operator(emat, op, ga)
+    dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
+    
     zmat = rmat @ dy
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, tinv = precondition(zmat)
-    heinv = tmat @ tmat.T
+    tmat, tinv, heinv, dum = precondition(zmat)
     dxa = dxf @ tmat 
     xa = xa_[:, None] + dxa * np.sqrt(nmem-1)
     pa = dxa @ dxa.T
@@ -232,7 +219,7 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     #    print("==inflation==, alpha={}".format(alpha))
     #    pa *= alpha
         
-    return xa, xa_, pa, chi2, ds
+    return xa, xa_, pa, chi2, ds, condh
 
 def cost_j(nx, nmem, model, xopt, icycle, *args):
     xf_, dxf, y, precondition, eps, rmat, htype = args

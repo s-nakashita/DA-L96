@@ -7,7 +7,7 @@ op = sys.argv[1]
 model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-perts = ["mlef", "etkf"]
+perts = ["mlef", "etkf", "mlefb", "mleft"]
 #perts = ["etkf-fh","etkf-jh"]
 #if model == "z08":
 #    na = 20
@@ -16,7 +16,7 @@ perts = ["mlef", "etkf"]
 fig, ax = plt.subplots()
 #lags = [4, 6, 8, 10, 12]
 gamma = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-linecolor={"mlef":"tab:blue","etkf":"tab:orange"}
+linecolor={"mlef":"tab:blue","etkf":"tab:orange","mlefb":"tab:cyan","mleft":"tab:pink"}
 linestyle=["solid","dashed"]
 j = 0
 for pt in perts:
@@ -32,8 +32,8 @@ for pt in perts:
             i += 1
             continue
         e = np.loadtxt(f)
-        #el[i] = np.mean(e[int(na/3):])
-        el[i] = np.mean(e[200:])
+        el[i] = np.mean(e[int(na/3):])
+        #el[i] = np.mean(e[200:])
         i += 1
     ax.plot(gamma, el, linestyle=linestyle[0], color=linecolor[pt], label=pt)
     j += 1
