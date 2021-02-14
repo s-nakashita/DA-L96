@@ -20,9 +20,9 @@ def calc_grad_j(x, *args):
     d = JH @ x - ob
     return binv @ x + JH.T @ rinv @ d 
 
-def analysis(xf, binv, y, rinv, htype, gtol=1e-6, maxiter=None, \
-    disp=False, save_hist=False, save_dh=False, \
-    model="model", icycle=0)
+def analysis(xf, binv, y, rinv, htype, gtol=1e-6, maxiter=None, 
+    disp=False, save_hist=False, save_dh=False, 
+    model="model", icycle=0):
     global zetak
     zetak = []
     op = htype["operator"]
