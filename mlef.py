@@ -108,7 +108,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     if save_dh:
         #np.save("{}_dh_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dh)
         np.save("{}_dy_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dh)
-        ob = y - obs.h_operator(xc, op)
+        ob = y - obs.h_operator(xc, op, ga)
         np.save("{}_d_{}_{}_cycle{}.npy".format(model, op, pt, icycle), ob)
 #    logger.info("save_dh={}".format(save_dh))
     print("save_dh={}".format(save_dh))
