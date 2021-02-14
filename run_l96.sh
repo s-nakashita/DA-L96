@@ -1,14 +1,14 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
-operators="linear quadratic cubic"
-#perturbations="mlef etkf po srf letkf"
-perturbations="mlef mlefb mleft"
+operators="linear" # quadratic cubic"
+perturbations="mlef etkf po srf letkf"
+#perturbations="mlef mlefb mleft"
 #perturbations="mlef grad etkf-jh etkf-fh"
 na=100 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
-exp="l96_mlef"
+exp="l96_test"
 echo ${exp}
 src=$(pwd)
 rm -rf ${exp}
