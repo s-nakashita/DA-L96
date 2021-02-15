@@ -26,8 +26,8 @@ def precondition(zmat):
 #    logger.debug("tmat={}".format(tmat))
 #    logger.debug("heinv={}".format(heinv))
 #    logger.debug("s={}".format(s))
-    print("eigenvalues={}".format(lam))
-    print("cond(hessian)={}".format(la.cond(hes)))
+    #print("eigenvalues={}".format(lam))
+    #print("cond(hessian)={}".format(la.cond(hes)))
     return tmat, heinv, la.cond(hes)
 
 
@@ -115,9 +115,9 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     zmat = rmat @ dh
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
     tmat, heinv, condh = precondition(zmat)
-    if icycle == 0:
-        print("tmat={}".format(tmat))
-        print("heinv={}".format(heinv))
+    #if icycle == 0:
+    #    print("tmat={}".format(tmat))
+    #    print("heinv={}".format(heinv))
 #    logger.debug("pf.shape={}".format(pf.shape))
 #    logger.debug("tmat.shape={}".format(tmat.shape))
 #    logger.debug("heinv.shape={}".format(heinv.shape))

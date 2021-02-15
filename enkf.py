@@ -28,8 +28,11 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             jhi = obs.dhdx(xf[:,i], op, ga)
             dy[:,i] = jhi @ dxf[:,i]
     else:
-        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
-        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
+    #d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
+    d = y - np.squeeze(obs.h_operator(xf_, op, ga))
+    
     hes = np.eye(nmem) + dy.T @ rinv @ dy
     condh = la.cond(hes)
     # inflation parameter
@@ -57,8 +60,6 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     #        print("==B-localization==")
     #        dist, l_mat = loc_mat(sigma=2.0, nx=xf_.size, ny=xf_.size)
     #        pf = pf * l_mat
-    #d = y - np.squeeze(obs.h_operator(xf_, op, ga))
-    d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     if save_dh:
         print("save dxf")
         np.save("{}_dxf_{}_{}_cycle{}.npy".format(model, op, da, icycle), dxf)
@@ -112,7 +113,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         A = (nmem-1)*A + dy.T @ rinv @ dy
         #TT = la.inv( np.eye(nmem) + dy.T @ rinv @ dy / (nmem-1) )
         lam, v = la.eigh(A)
-        print("eigenvalue(sqrt)={}".format(np.sqrt(lam)))
+        #print("eigenvalue(sqrt)={}".format(np.sqrt(lam)))
         Dinv = np.diag(1.0/lam)
         TT = v @ Dinv @ v.T
         T = v @ np.sqrt((nmem-1)*Dinv) @ v.T
@@ -203,11 +204,18 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
 
             x0_ = xa_[:]
             dx0 = dxa[:,:]
-            #dy0 = obs.h_operator(x0_+dx0, op, ga) - obs.h_operator(x0_, op, ga)
-            #d0 = y[:,None] - obs.h_operator(x0_, op, ga)
             x0 = x0_ + dx0
-            dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-            d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
+            if tlm:
+                #dy0 = obs.dhdx(x0_, op, ga) @ dx0
+                dy0 = np.zeros((y.size,nmem))
+                for i in range(nmem):
+                    jhi = obs.dhdx(x0[:,i], op, ga)
+                    dy0[:,i] = jhi @ dx0[:,i]
+            else:
+                #dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
+                dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
+            #d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
+            d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
             #p0 = pa[:,:]
             #print(x0_.shape)
             #print(dx0.shape)

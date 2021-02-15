@@ -270,9 +270,9 @@ if __name__ == "__main__":
         np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
         np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)
         np.savetxt("{}_dof_{}_{}_oberr{}.txt".format(model, op, pt, oberr), dof)
-    #else:
-    #np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
-    #np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
-    #np.savetxt("{}_dof_{}_{}.txt".format(model, op, pt), dof)
+    else:
+        np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
+        np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
+        np.savetxt("{}_dof_{}_{}.txt".format(model, op, pt), dof)
     #np.savetxt("{}_condh_{}_{}.txt".format(model, op, pt), cond)
     #np.savetxt("{}_checkg_{}_{}.txt".format(model, op, pt), checkg)
