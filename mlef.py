@@ -6,6 +6,7 @@ import numpy.linalg as la
 import scipy.optimize as spo
 import obs
 import costJ
+from minimize import Minimize
 
 
 #logging.config.fileConfig("logging_config.ini")
@@ -126,6 +127,11 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
 #    logger.debug("gmat.shape={}".format(gmat.shape))
     x0 = np.zeros(xf.shape[1])
     args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype)
+    iprint = np.zeros(2, dtype=np.int32)
+    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, args_j, iprint)
+    x = minimize.minimize_lbfgs(x0)
+    xa = xc + gmat @ x
+    """
 #    logger.info("save_hist={}".format(save_hist))
     print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
@@ -171,6 +177,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     xa = xc + gmat @ res.x
     if save_dh:
         np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), gmat@res.x)
+    """
     if pt == "grad":
         dh = obs.dhdx(xa, op, ga) @ pf
     else:

@@ -28,10 +28,10 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             jhi = obs.dhdx(xf[:,i], op, ga)
             dy[:,i] = jhi @ dxf[:,i]
     else:
-        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
-        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
-    #d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
-    d = y - np.squeeze(obs.h_operator(xf_, op, ga))
+        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
+    d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
+    #d = y - np.squeeze(obs.h_operator(xf_, op, ga))
     
     hes = np.eye(nmem) + dy.T @ rinv @ dy
     condh = la.cond(hes)
@@ -212,10 +212,10 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
                     jhi = obs.dhdx(x0[:,i], op, ga)
                     dy0[:,i] = jhi @ dx0[:,i]
             else:
-                #dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-                dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
-            #d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
-            d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
+                dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
+                #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
+            d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
+            #d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
             #p0 = pa[:,:]
             #print(x0_.shape)
             #print(dx0.shape)

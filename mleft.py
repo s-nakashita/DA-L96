@@ -6,7 +6,7 @@ import numpy.linalg as la
 import scipy.optimize as spo
 import obs
 import costJ
-
+from minimize import Minimize
 
 #logging.config.fileConfig("logging_config.ini")
 #logger = logging.getLogger(__name__)
@@ -140,10 +140,15 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
 #    logger.debug("gmat.shape={}".format(gmat.shape))
     w0 = np.zeros(xf.shape[1])
     args_j = (xf_, dxf, y, calc_hess, rinv, htype)
+    iprint = np.zeros(2, dtype=np.int32)
+    minimize = Minimize(w0.size, 7, calc_j, calc_grad_j, args_j, iprint)
+    w = minimize.minimize_lbfgs(w0)
+    xa_ = xf_ + dxf @ w
 #    logger.info("save_hist={}".format(save_hist))
     print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, w0, *args_j)
     print("check_grad={}".format(cg))
+    """
     if save_hist:
         #g = calc_grad_j(w0, *args_j)
         #print("g={}".format(g))
@@ -186,6 +191,7 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     condh[1] = la.cond(la.inv(res.hess_inv))
     if save_dh:
         np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dxf@res.x)
+    """
     tmat = np.load("tmat.npy")
     tinv = np.load("tinv.npy")
     emat = xa_[:, None] + np.sqrt(nmem-1) * dxf @ tmat

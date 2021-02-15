@@ -321,7 +321,7 @@ C
       ELSE
 C         IFLAG=2
          OFLAG=2
-         PRINT*, "RETURN FROM L320"
+C         PRINT*, "RETURN FROM L320"
          RETURN
       ENDIF
  100  CONTINUE
@@ -382,12 +382,12 @@ C     ----------------------------------------------------
  172  CONTINUE
       CALL MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,
      *            XTOL,MAXFEV,INFO,NFEV,DIAG)
-      PRINT*, "INFO=", INFO
+C      PRINT*, "INFO=", INFO
       IF (INFO .EQ. -1) THEN
 C        IFLAG=1
         OFLAG=1
-        PRINT*, "IFLAG=", OFLAG
-        PRINT*, "RETURN FROM L385"
+C        PRINT*, "IFLAG=", OFLAG
+C        PRINT*, "RETURN FROM L385"
         RETURN
       ENDIF
       IF (INFO .NE. 1) GO TO 190
@@ -416,7 +416,7 @@ C
       IF (FINISH) THEN
 C         IFLAG=0
          OFLAG=0
-         PRINT*, "RETURN FROM L413"
+C         PRINT*, "RETURN FROM L413"
          RETURN
       ENDIF
       GO TO 80
@@ -451,7 +451,7 @@ C
      .       ' ARE NOT POSITIVE)')
  245  FORMAT(/'  GTOL IS LESS THAN OR EQUAL TO 1.D-04',
      .       / ' IT HAS BEEN RESET TO 9.D-01')
-      PRINT *, "RETURN FROM L445"
+C      PRINT *, "RETURN FROM L445"
       RETURN
       END
 C
