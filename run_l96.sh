@@ -1,6 +1,6 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
-operators="linear" # quadratic cubic"
+operators="linear quadratic cubic"
 perturbations="mlef etkf po srf letkf"
 #perturbations="mlef mlefb mleft"
 #perturbations="mlef grad etkf-jh etkf-fh"
@@ -15,6 +15,7 @@ rm -rf ${exp}
 mkdir -p ${exp}
 cd ${exp}
 cp ../data.csv .
+cp ../logging_config.ini .
 gamma="1 2 3 4 5 6 7 8 9 10"
 inf="1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9"
 for op in ${operators}; do
@@ -66,6 +67,8 @@ for op in ${operators}; do
   #done
   #python ../plotega.py ${op} l96 ${na} 
   python ../plote.py ${op} l96 ${na}
+  python ../plotgh.py ${op} l96 ${na}
+  python ../plotjh.py ${op} l96 ${na}
 done
 #./plot.sh l96 ${exp} ${operators} ${na}
 #./copy.sh l96 ${exp} ${operators}

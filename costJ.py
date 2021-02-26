@@ -71,7 +71,7 @@ def gen_true(x, dt, nu, t0true, t0f, nt, na):
 
 
 def gen_obs(u, sigma, op):
-    y = h_operator(add_noise(u, sigma), op)
+    y = obs.add_noise(obs.h_operator(u, sigma), op)
     return y
 
 def precondition(zmat):
@@ -120,6 +120,26 @@ def cost_j(nx, nmem, *args_j):
     return jvalb, jvalo
     #np.save("cJ_{}_{}.npy".format(op, pt), jval)
 
+def cost_j2d(xmax, nmem, model, xopt, icycle, htype, calc_j, calc_grad_j, *args):
+    op = htype["operator"]
+    pt = htype["perturbation"]
+    delta = np.linspace(-xmax,xmax,101, endpoint=True)
+    x_g = np.zeros((3,nmem))
+    x_g[0,:] = xopt
+    x_g[1,:] = calc_grad_j(np.zeros(nmem), *args)
+    x_g[2,0] = xmax
+    np.save("{}_x+g_{}_{}_cycle{}.npy".format(model, op, pt, icycle), x_g)
+
+    for i in range(nmem-1):
+        for j in range(i+1,nmem):
+            jval = np.zeros((len(delta),len(delta)))
+            x0 = np.zeros(nmem)
+            for k in range(len(delta)):
+                x0[i] = delta[k]
+                for l in range(len(delta)):
+                    x0[j] = delta[l]
+                    jval[l,k] = calc_j(x0, *args)
+            np.save("{}_cJ2d_{}_{}_{}{}_cycle{}.npy".format(model, op, pt, i, j, icycle), jval)
 if __name__ == "__main__":
     op = htype["operator"]
     pt = htype["perturbation"]
@@ -128,7 +148,7 @@ if __name__ == "__main__":
     xc = u[:,0]
     xf = u[:,1:]
     pf = xf - xc[:,None]
-    dh = h_operator(xf, op) - h_operator(xc, op)[:,None]
+    dh = obs.h_operator(xf, op) - obs.h_operator(xc, op)[:,None]
     zmat = rmat @ dh
     tmat, heinv = precondition(zmat)
     gmat = pf @ tmat

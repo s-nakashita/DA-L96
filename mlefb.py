@@ -8,8 +8,8 @@ import obs
 import costJ
 from minimize import Minimize
 
-#logging.config.fileConfig("logging_config.ini")
-#logger = logging.getLogger(__name__)
+logging.config.fileConfig("logging_config.ini")
+logger = logging.getLogger('anl')
 
 def precondition(zmat):
     #u, s, vt = la.svd(zmat)
@@ -70,7 +70,7 @@ def calc_grad_j(w, *args):
     #return (nmem-1)*tmat @ zeta - dh.transpose() @ rinv @ ob
 
 
-def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,  
+def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",  
         maxiter=None, disp=False, save_hist=False, save_dh=False,
         infl=False, loc = False, tlm=False, infl_parm=1.0, model="z08", icycle=100):
     global zetak
@@ -101,12 +101,14 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
                 alpha = 1.65
         """
         alpha = infl_parm
-        print("==inflation==, alpha={}".format(alpha))
+        logger.info("==inflation==, alpha={}".format(alpha))
+#        print("==inflation==, alpha={}".format(alpha))
         dxf *= alpha
 #    logger.debug("norm(pf)={}".format(la.norm(pf)))
     if loc:
         l_sig = 4.0
-        print("==localization==, l_sig={}".format(l_sig))
+        logger.info("==localization==, l_sig={}".format(l_sig))
+#        print("==localization==, l_sig={}".format(l_sig))
         dxf = pfloc(dxf, l_sig, save_dh, model, op, pt, icycle)
     emat = xf_[:, None] + eps*dxf
     hemat = obs.h_operator(emat, op, ga)
@@ -117,8 +119,8 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
         np.save("{}_dy_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dy)
         ob = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
         np.save("{}_d_{}_{}_cycle{}.npy".format(model, op, pt, icycle), ob)
-#    logger.info("save_dh={}".format(save_dh))
-    print("save_dh={}".format(save_dh))
+    logger.info("save_dh={}".format(save_dh))
+#    print("save_dh={}".format(save_dh))
     zmat = rmat @ dy
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
     tmat, tinv, heinv, condh = precondition(zmat)
@@ -134,21 +136,17 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     w0 = np.zeros(xf.shape[1])
     args_j = (xf_, dxf, y, precondition, eps, rmat, htype)
     iprint = np.zeros(2, dtype=np.int32)
-    minimize = Minimize(w0.size, 7, calc_j, calc_grad_j, args_j, iprint)
-    w = minimize.minimize_lbfgs(w0)
-    xa_ = xf_ + dxf @ w
-#    logger.info("save_hist={}".format(save_hist))
-    print("save_hist={} cycle{}".format(save_hist, icycle))
+    minimize = Minimize(w0.size, 7, calc_j, calc_grad_j, 
+                        args_j, iprint, method)
+    logger.info("save_hist={}".format(save_hist))
+#    print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, w0, *args_j)
-    print("check_grad={}".format(cg))
-    """
+    logger.info("check_grad={}".format(cg))
+#    print("check_grad={}".format(cg))
     if save_hist:
-        #g = calc_grad_j(w0, *args_j)
-        #print("g={}".format(g))
-        res = spo.minimize(calc_j, w0, args=args_j, method='BFGS', \
-                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)
-        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-        #        jac=None, options={'gtol':gtol, 'disp':disp}, callback=callback)
+        w = minimize(w0, callback=callback)
+        logger.debug(zetak)
+#        print(len(zetak))
         jh = np.zeros(len(zetak))
         gh = np.zeros(len(zetak))
         for i in range(len(zetak)):
@@ -158,33 +156,21 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
         np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
         np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
         if model=="z08":
-            xmax = max(np.abs(np.min(res.x)),np.max(res.x))
-            print("resx max={}".format(xmax))
-            if xmax < 1000:
-                cost_j(1000, xf.shape[1], model, res.x, icycle, *args_j)
-            else:
-                xmax = int(xmax*0.01+1)*100
-                print("resx max={}".format(xmax))
-                cost_j(xmax, xf.shape[1], model, res.x, icycle, *args_j)
+            xmax = max(np.abs(np.min(w)),np.max(w))
+            logger.debug("resx max={}".format(xmax))
+#            print("resx max={}".format(xmax))
+            xmax = np.ceil(xmax*0.001)*1000
+            logger.debug("resx max={}".format(xmax))
+#           print("resx max={}".format(xmax))
+            #cost_j(xmax, xf.shape[1], model, w, icycle, *args_j)
+            costJ.cost_j2d(xmax, xf.shape[1], model, w, icycle, 
+                           htype, calc_j, calc_grad_j, *args_j)
         elif model=="l96":
-            cost_j(200, xf.shape[1], model, res.x, icycle, *args_j)
+            cost_j(200, xf.shape[1], model, w, icycle, *args_j)
     else:
-        res = spo.minimize(calc_j, w0, args=args_j, method='BFGS', \
-                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp})
-        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-        #        jac=None, options={'gtol':gtol, 'disp':disp})
-#    logger.info("success={} message={}".format(res.success, res.message))
-    print("success={} message={}".format(res.success, res.message))
-#    logger.info("J={:7.3e} dJ={:7.3e} nit={}".format( \
-#            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
-    print("J={:7.3e} dJ={:7.3e} nit={}".format( \
-            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
-    print("x={}".format(dxf @ res.x))
-    xa_ = xf_ + dxf @ res.x
-    #condh[1] = la.cond(la.inv(res.hess_inv))
-    if save_dh:
-        np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), dxf@res.x)
-    """
+        w = minimize(w0)
+    xa_ = xf_ + dxf @ w
+    
     emat = xa_[:, None] + eps*dxf
     hemat = obs.h_operator(emat, op, ga)
     dy = (hemat - np.mean(hemat, axis=1)[:, None]) / eps
@@ -205,25 +191,7 @@ def analysis(xf, xf_, y, rmat, rinv, htype, gtol=1e-6,
     d = y - np.mean(obs.h_operator(xa, op, ga), axis=1)
     chi2 = chi2_test(zmat, heinv, rmat, d)
     ds = dof(zmat)
-    print(ds)
-    #if infl:
-    #    if op == "linear":
-    #        if pt == "mlef":
-    #            alpha = 1.1
-    #        else:
-    #            alpha = 1.2
-    #    elif op == "quadratic" or op == "quadratic-nodiff":
-    #        if pt == "mlef":
-    #            alpha = 1.3
-    #        else:
-    #            alpha = 1.35
-    #    elif op == "cubic" or op == "cubic-nodiff":
-    #        if pt == "mlef":
-    #            alpha = 1.6
-    #        else:
-    #            alpha = 1.65
-    #    print("==inflation==, alpha={}".format(alpha))
-    #    pa *= alpha
+    logger.info("DOF = {}".format(ds))
         
     return xa, xa_, pa, chi2, ds, condh
 

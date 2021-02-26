@@ -7,7 +7,7 @@ def derivative(p, dx):
     f = np.zeros_like(p)
     f[2:-2] = -3.0 * p[2:-2] * (p[3:-1] - p[1:-3]) / dx \
         + (0.5 * p[4:] - p[3:-1] + p[1:-3] - 0.5 * p[:-4]) / dx**3
-    return df
+    return f
 
 
 def step(u, dx, dt):

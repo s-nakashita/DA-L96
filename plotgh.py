@@ -1,17 +1,25 @@
 import sys
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 op = sys.argv[1]
 model = sys.argv[2]
 na = int(sys.argv[3])
-perts = ["mlef", "mlefb", "mleft"]
+perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "mlef3", "mlefw", "mlefh"]
+linestyle = ["solid", "dashed"]
 for i in range(4):
     fig, ax = plt.subplots()
     for pt in perts:
-        gh = np.loadtxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, i))
+        f = "{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, i)
+        if not os.path.isfile(f):
+            print("not exist {}".format(f))
+            continue
+        gh = np.loadtxt(f)
         x = np.arange(gh.size) + 1
-        ax.plot(x, gh, label=pt)
+        jj = perts.index(pt)
+        j = jj - int(jj/2)*2
+        ax.plot(x, gh, linestyle=linestyle[j], label=pt)
     ax.set(xlabel="iteration", ylabel="|g|", title=op)
     ax.set_xticks(x[::5])
     ax.set_xticks(x, minor=True)

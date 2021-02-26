@@ -6,13 +6,14 @@ C     LBFGS SUBROUTINE
 C     ****************
 C
       SUBROUTINE LBFGS(N,M,X,F,G,DIAGCO,DIAG,IPRINT,EPS,XTOL,W,IFLAG,
-     &       OFLAG)
+     *       XK, OFLAG)
 C
       INTEGER, INTENT(IN) :: N,M,IPRINT(2)
       INTEGER, INTENT(IN) :: IFLAG
       INTEGER, INTENT(OUT) :: OFLAG
       DOUBLE PRECISION, INTENT(INOUT) :: X(N),G(N),DIAG(N),
-     & W(N*(2*M+1)+2*M)
+     * W(N*(2*M+1)+2*M)
+      DOUBLE PRECISION, INTENT(OUT) :: XK(N)
       DOUBLE PRECISION, INTENT(IN) :: F,EPS,XTOL
       LOGICAL, INTENT(IN) :: DIAGCO
 C     intent(in) N, M, IPRINT(2), F, G(N), DIAGCO, DIAG, IPRINT, EPS, XTOL, W
@@ -235,7 +236,7 @@ C
       DOUBLE PRECISION GTOL,ONE,ZERO,GNORM,DDOT,STP1,FTOL,STPMIN,
      .                 STPMAX,STP,YS,YY,SQ,YR,BETA,XNORM
       INTEGER MP,LP,ITER,NFUN,POINT,ISPT,IYPT,MAXFEV,INFO,
-     .        BOUND,NPT,CP,I,NFEV,INMC,IYCN,ISCN
+     .        BOUND,NPT,CP,I,J,NFEV,INMC,IYCN,ISCN
       LOGICAL FINISH
 C
       SAVE
@@ -298,7 +299,9 @@ C
 C     PARAMETERS FOR LINE SEARCH ROUTINE
 C     
       FTOL= 1.0D-4
-      MAXFEV= 20
+C      FTOL= 1.0D-2
+C      MAXFEV= 20
+      MAXFEV= 100
 C
       IF(IPRINT(1).GE.0) CALL LB1(IPRINT,ITER,NFUN,
      *                     GNORM,N,M,X,F,G,STP,FINISH)
@@ -322,6 +325,8 @@ C
 C         IFLAG=2
          OFLAG=2
 C         PRINT*, "RETURN FROM L320"
+         DO 92 I=1,n
+ 92      XK(I) = X(I)
          RETURN
       ENDIF
  100  CONTINUE
@@ -388,6 +393,8 @@ C        IFLAG=1
         OFLAG=1
 C        PRINT*, "IFLAG=", OFLAG
 C        PRINT*, "RETURN FROM L385"
+        DO 174 I=1,N 
+ 174    XK(I) = X(I)
         RETURN
       ENDIF
       IF (INFO .NE. 1) GO TO 190
@@ -417,6 +424,8 @@ C
 C         IFLAG=0
          OFLAG=0
 C         PRINT*, "RETURN FROM L413"
+         DO 176 I=1,N
+ 176     XK(I) = X(I)
          RETURN
       ENDIF
       GO TO 80
@@ -428,14 +437,20 @@ C
 C 190  IFLAG=-1
  190  OFLAG=-1
       IF(LP.GT.0) WRITE(LP,200) INFO
+      DO 192 I=1,N
+ 192     XK(I) = X(I)
       RETURN
 C 195  IFLAG=-2
  195  OFLAG=-2
       IF(LP.GT.0) WRITE(LP,235) I
+      DO 197 J=1,N
+ 197     XK(J) = X(J)
       RETURN
 C 196  IFLAG= -3
  196  OFLAG= -3
       IF(LP.GT.0) WRITE(LP,240)
+      DO 198 I=1,N
+ 198     XK(I) = X(I)
 C
 C     FORMATS
 C     -------
@@ -920,6 +935,7 @@ C           AND TO COMPUTE THE NEW STEP.
 C
             CALL MCSTEP(STX,FXM,DGXM,STY,FYM,DGYM,STP,FM,DGM,
      *                 BRACKT,STMIN,STMAX,INFOC)
+            PRINT *, "INFOC=", INFOC
 C
 C           RESET THE FUNCTION AND GRADIENT VALUES FOR F.
 C
@@ -934,6 +950,7 @@ C           AND TO COMPUTE THE NEW STEP.
 C
             CALL MCSTEP(STX,FX,DGX,STY,FY,DGY,STP,F,DG,
      *                 BRACKT,STMIN,STMAX,INFOC)
+            PRINT *, "INFOC=", INFOC
             END IF
 C
 C        FORCE A SUFFICIENT DECREASE IN THE SIZE OF THE

@@ -1,9 +1,9 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
 operators="test"
-perturbations="mlef mlefb mleft etkf" # po srf letkf"
+perturbations="mlef grad mlefb etkf" # po srf letkf"
 #perturbations="mlef grad etkf-jh etkf-fh"
-na=800 # Number of assimilation cycle
+na=500 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
@@ -14,14 +14,16 @@ rm -rf ${exp}
 mkdir -p ${exp}
 cd ${exp}
 cp ../data.csv .
+cp ../logging_config.ini .
 gamma="1 2 3 4 5 6 7 8 9 10"
-#inf="1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9"
+#gamma="1"
+inf="1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9"
 for op in ${operators}; do
   for ga in ${gamma}; do
     for pt in ${perturbations}; do
       #for infl_parm in ${inf}; do
       #infl_parm=$(python ../infl_parm.py ${pt} ${ga})
-      infl_parm=1.3
+      infl_parm=1.2
         #pt=${pert:0:4}
         pert=${pt}
         if test "${pert:5:2}" = "jh" ; then
@@ -36,17 +38,18 @@ for op in ${operators}; do
           #python ../l96.py ${op} ${pt} ${na} ${linf} ${lloc} ${ltlm} ${ga} > l96_${op}_${pert}.log 2>&1
           python ../l96.py ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} ${ga} > l96_${op}_${pert}.log 2>&1
           wait
+          cp l96_e_${op}_${pt}_ga${ga}.txt l96_e_${op}_${pt}.txt
           mv l96_e_${op}_${pt}_ga${ga}.txt e${ga}_${count}.txt
           #rm obs*.npy
         done
         python ../calc_mean.py e ${na} ${ga} ${count}
-        if test ${pt} = "grad" ; then
-          mv e${ga}_mean.txt l96_e_${op}_mlef_ga${ga}_mean.txt
-          #mv e${ga}_mean.txt l96_e_${op}_mlef_${infl_parm}.txt
-        else
-          mv e${ga}_mean.txt l96_e_${op}_${pt}_ga${ga}_mean.txt
+        #if test ${pt} = "grad" ; then
+        #  mv e${ga}_mean.txt l96_e_${op}_mlef_ga${ga}_mean.txt
+        #  #mv e${ga}_mean.txt l96_e_${op}_mlef_${infl_parm}.txt
+        #else
+        mv e${ga}_mean.txt l96_e_${op}_${pt}_ga${ga}_mean.txt
           #mv e${ga}_mean.txt l96_e_${op}_${pt}_${infl_parm}.txt
-        fi
+        #fi
         rm e${ga}_*.txt
       #done
     #./output.sh ${exp} l96 ${op} ${pt} ${pert}
@@ -58,7 +61,7 @@ for op in ${operators}; do
     #fi
     done
     #./copy.sh l96 ${exp} ${op}
-    #python plote.py ${op} l96 ${na}
+    python ../plote.py ${op} l96 ${na}
     #mv l96_e_${op}.png l96_e_${op}_${exp}.png
     #python plotdy.py ${op} l96 ${na}
     #python plotlpf.py ${op} l96 ${na}

@@ -35,6 +35,8 @@ def analysis(xf, binv, y, rinv, htype, gtol=1e-6, maxiter=None,
 
     x0 = np.zeros_like(xf)
     args_j = (binv, JH, rinv, ob)
+    cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
+    print("check_grad={}".format(cg))
     if save_hist:
         res = spo.minimize(calc_j, x0, args=args_j, method='BFGS',\
             jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)

@@ -82,7 +82,8 @@ def get_true_and_obs(na, nx, sigma, op, gamma=1):
 
     #obs = pd.read_csv("observation_data.csv")
     #y = obs.values.reshape(na,nx)
-    y = add_noise(h_operator(xt, op, gamma), sigma)
+    seed = None
+    y = add_noise(h_operator(xt, op, gamma), sigma, seed=seed)
 
     return xt, y
 
@@ -162,19 +163,22 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False, \
         #u[:, 1:] = ua
     return u, pa, chi2, ds
 
-def plot_initial(uc, u, ut, lag, model):
+def plot_initial(uc, u, ut, pt, model):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     x = np.arange(ut.size) + 1
     ax.plot(x, ut, label="true")
-    ax.plot(x, uc, label="control")
+    if pt == "mlef" or pt == "grad":
+        ax.plot(x, uc, label="control")
+    else:
+        ax.plot(x, np.mean(u, axis=1), label="mean")
     for i in range(u.shape[1]):
         ax.plot(x, u[:,i], linestyle="--", label="mem{}".format(i+1))
-    ax.set(xlabel="points", ylabel="X", title="initial lag={}".format(lag))
+    ax.set(xlabel="points", ylabel="X", title="initial state")
     ax.set_xticks(x[::5])
     ax.set_xticks(x, minor=True)
-    ax.legend()
-    fig.savefig("{}_initial_lag{}.png".format(model, lag))
+    ax.legend(ncol=2)
+    fig.savefig("{}_initial_{}.png".format(model, pt))
 
 if __name__ == "__main__":
     op = htype["operator"]
@@ -188,8 +192,10 @@ if __name__ == "__main__":
     if pt == "mlef" or pt == "grad":
         x0c = x0[:, 0]
         pf = (x0 - x0c[:,None]) @ (x0 - x0c[:,None]).T
+        plot_initial(x0c, x0[:, 1:], xt[0,:], pt, model)
     else:
         pf = (x0 - np.mean(x0,axis=1).reshape(-1,1)) @ (x0 - np.mean(x0,axis=1).reshape(-1,1)).T/(nmem-1)
+        plot_initial(None, x0, xt[0,:], pt, model)
     print("pf={}".format(pf))
     u = np.zeros((nx, nmem))
     u[:, :] = x0
@@ -197,6 +203,7 @@ if __name__ == "__main__":
     #u[:, 1:] = x0
     xa = np.zeros((na, nx, nmem))
     xf = np.zeros_like(xa)
+    xf[0, :, :] = u
     if pt == "mlef" or pt == "grad":
         sqrtpa = np.zeros((na, nx, nmem-1))
     else:
@@ -217,16 +224,17 @@ if __name__ == "__main__":
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
                 model=model, icycle=i)
         xa[i, :, :] = u
-        xf[i, :, :] = u
         sqrtpa[i, :, :] = pa
         chi[i] = chi2
         if i < na-1:
             u = forecast(u, dt, F, nt, htype)
+            xf[i+1, :, :] = u
         if pt == "mlef" or pt == "grad":
             e[i] = np.sqrt(np.mean((xa[i, :, 0] - xt[i, :])**2))
         else:
             e[i] = np.sqrt(np.mean((np.mean(xa[i, :, :], axis=1) - xt[i, :])**2))
     np.save("{}_ua_{}_{}.npy".format(model, op, pt), xa)
+    np.save("{}_uf_{}_{}.npy".format(model, op, pt), xf)
     np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
     if len(sys.argv) > 7:
         np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)

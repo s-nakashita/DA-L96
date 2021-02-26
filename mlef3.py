@@ -22,14 +22,14 @@ def precondition(zmat):
     lam, v = la.eigh(c)
     D = np.diag(1.0/(np.sqrt(lam + np.ones(lam.size))))
     tmat = v @ D @ v.T
-    heinv = tmat @ tmat.T
-    hes = v @ np.diag(lam + np.ones(lam.size)) @ v.T
+    #heinv = tmat @ tmat.T
+    #hes = v @ np.diag(lam + np.ones(lam.size)) @ v.T
 #    logger.debug("tmat={}".format(tmat))
 #    logger.debug("heinv={}".format(heinv))
 #    logger.debug("s={}".format(s))
     #print("eigenvalues={}".format(lam))
     #print("cond(hessian)={}".format(la.cond(hes)))
-    return tmat, heinv, la.cond(hes)
+    return tmat
 
 
 def callback(xk):
@@ -39,8 +39,13 @@ def callback(xk):
 
 
 def calc_j(zeta, *args):
-    xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    #xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    xc, pf, y, precondition, rmat, htype = args
     nmem = zeta.size
+    tmat = np.load("tmat.npy")
+    gmat = pf @ tmat
+    heinv = tmat.transpose() @ tmat
+    rinv = rmat.transpose() @ rmat
     x = xc + gmat @ zeta
     ob = y - obs.h_operator(x, htype["operator"], htype["gamma"])
     j = 0.5 * (zeta.transpose() @ heinv @ zeta + ob.transpose() @ rinv @ ob)
@@ -51,8 +56,11 @@ def calc_j(zeta, *args):
     
 
 def calc_grad_j(zeta, *args):
-    xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    #xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    xc, pf, y, precondition, rmat, htype = args
     nmem = zeta.size
+    tmat = np.load("tmat.npy")
+    gmat = pf @ tmat 
     x = xc + gmat @ zeta
     hx = obs.h_operator(x, htype["operator"], htype["gamma"])
     ob = y - hx
@@ -60,11 +68,15 @@ def calc_grad_j(zeta, *args):
         dh = obs.dhdx(x, htype["operator"], htype["gamma"]) @ pf
     else:
         dh = obs.h_operator(x[:, None] + pf, htype["operator"], htype["gamma"]) - hx[:, None]
-    return tmat @ zeta - dh.transpose() @ rinv @ ob
+    zmat = rmat @ dh
+    g = tmat @ zeta - zmat.transpose() @ rmat @ ob 
+    tmat = precondition(zmat)
+    np.save("tmat.npy", tmat)
+    return g
     #return (nmem-1)*tmat @ zeta - dh.transpose() @ rinv @ ob
 
 
-def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
+def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,  
         maxiter=None, disp=False, save_hist=False, save_dh=False,
         infl=False, loc = False, infl_parm=1.0, model="z08", icycle=100):
     global zetak
@@ -118,28 +130,28 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
 #    print("save_dh={}".format(save_dh))
     zmat = rmat @ dh
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, heinv, condh = precondition(zmat)
+    tmat = precondition(zmat)
+    np.save("tmat.npy", tmat)
     #if icycle == 0:
     #    print("tmat={}".format(tmat))
     #    print("heinv={}".format(heinv))
 #    logger.debug("pf.shape={}".format(pf.shape))
 #    logger.debug("tmat.shape={}".format(tmat.shape))
 #    logger.debug("heinv.shape={}".format(heinv.shape))
-    gmat = pf @ tmat
-    #gmat = np.sqrt(nmem-1) * pf @ tmat
+    #gmat = pf @ tmat
+    ##gmat = np.sqrt(nmem-1) * pf @ tmat
 #    logger.debug("gmat.shape={}".format(gmat.shape))
     x0 = np.zeros(xf.shape[1])
-    args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype)
+    args_j = (xc, pf, y, precondition, rmat, htype)
     iprint = np.zeros(2, dtype=np.int32)
     iprint[0] = 1
-    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, 
-                        args_j, iprint, method)
+    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, args_j, iprint)
     logger.info("save_hist={}".format(save_hist))
 #    print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
     logger.info("check_grad={}".format(cg))
     if save_hist:
-        x = minimize(x0,callback=callback)
+        x = minimize.minimize_lbfgs(x0,callback=callback)
         logger.debug(zetak)
 #        print(len(zetak))
         jh = np.zeros(len(zetak))
@@ -155,34 +167,70 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
             logger.debug("resx max={}".format(xmax))
 #            print("resx max={}".format(xmax))
             if xmax < 1000:
-                #cost_j(1000, xf.shape[1], model, x, icycle, *args_j)
-                #cost_j2d(1000, xf.shape[1], model, x, icycle, *args_j)
-                costJ.cost_j2d(1000, xf.shape[1], model, x, icycle, 
-                               htype, calc_j, calc_grad_j, *args_j)
+                cost_j(1000, xf.shape[1], model, x, icycle, *args_j)
             else:
-                #xmax = int(xmax*0.01+1)*100
-                xmax = np.ceil(xmax*0.001)*1000
+                xmax = int(xmax*0.01+1)*100
                 logger.debug("resx max={}".format(xmax))
 #                print("resx max={}".format(xmax))
-                #cost_j(xmax, xf.shape[1], model, x, icycle, *args_j)
-                #cost_j2d(xmax, xf.shape[1], model, x, icycle, *args_j)
-                costJ.cost_j2d(xmax, xf.shape[1], model, x, icycle,
-                               htype, calc_j, calc_grad_j, *args_j)
+                cost_j(xmax, xf.shape[1], model, x, icycle, *args_j)
         elif model=="l96":
             cost_j(200, xf.shape[1], model, x, icycle, *args_j)
     else:
-        x = minimize(x0)
+        x = minimize.minimize_lbfgs(x0)
+    tmat = np.load("tmat.npy")
+    gmat = pf @ tmat
     xa = xc + gmat @ x
-    
+    """
+    if save_hist:
+        #g = calc_grad_j(x0, *args_j)
+        #print("g={}".format(g))
+        res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
+                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)
+        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
+        #        jac=None, options={'gtol':gtol, 'disp':disp}, callback=callback)
+        jh = np.zeros(len(zetak))
+        gh = np.zeros(len(zetak))
+        for i in range(len(zetak)):
+            jh[i] = calc_j(np.array(zetak[i]), *args_j)
+            g = calc_grad_j(np.array(zetak[i]), *args_j)
+            gh[i] = np.sqrt(g.transpose() @ g)
+        np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
+        np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
+        if model=="z08":
+            xmax = max(np.abs(np.min(res.x)),np.max(res.x))
+            print("resx max={}".format(xmax))
+            if xmax < 1000:
+                cost_j(1000, xf.shape[1], model, res.x, icycle, *args_j)
+            else:
+                xmax = int(xmax*0.01+1)*100
+                print("resx max={}".format(xmax))
+                cost_j(xmax, xf.shape[1], model, res.x, icycle, *args_j)
+        elif model=="l96":
+            cost_j(200, xf.shape[1], model, res.x, icycle, *args_j)
+    else:
+        res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
+                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp})
+        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
+        #        jac=None, options={'gtol':gtol, 'disp':disp})
+#    logger.info("success={} message={}".format(res.success, res.message))
+    print("success={} message={}".format(res.success, res.message))
+#    logger.info("J={:7.3e} dJ={:7.3e} nit={}".format( \
+#            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
+    print("J={:7.3e} dJ={:7.3e} nit={}".format( \
+            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
+    print("x={}".format(gmat @ res.x))
+    xa = xc + gmat @ res.x
     if save_dh:
-        np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), gmat@x)
+        np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), gmat@res.x)
+    """
     if pt == "grad":
         dh = obs.dhdx(xa, op, ga) @ pf
     else:
         dh = obs.h_operator(xa[:, None] + pf, op, ga) - obs.h_operator(xa, op, ga)[:, None]
     zmat = rmat @ dh
 #    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
-    tmat, heinv, dum = precondition(zmat)
+    tmat = precondition(zmat)
+    heinv = tmat.transpose() @ tmat
     pa = pf @ tmat 
 #    pa *= np.sqrt(nmem)
     if save_dh:
@@ -196,11 +244,31 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
     chi2 = chi2_test(zmat, heinv, rmat, d)
     ds = dof(zmat)
     logger.info("DOF = {}".format(ds))
+#    print(ds)
+    #if infl:
+    #    if op == "linear":
+    #        if pt == "mlef":
+    #            alpha = 1.1
+    #        else:
+    #            alpha = 1.2
+    #    elif op == "quadratic" or op == "quadratic-nodiff":
+    #        if pt == "mlef":
+    #            alpha = 1.3
+    #        else:
+    #            alpha = 1.35
+    #    elif op == "cubic" or op == "cubic-nodiff":
+    #        if pt == "mlef":
+    #            alpha = 1.6
+    #        else:
+    #            alpha = 1.65
+    #    print("==inflation==, alpha={}".format(alpha))
+    #    pa *= alpha
         
-    return xa, pa, chi2, ds, condh
+    return xa, pa, chi2, ds
 
 def cost_j(nx, nmem, model, xopt, icycle, *args):
-    xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    #xc, pf, y, tmat, gmat, heinv, rinv, htype = args
+    xc, pf, y, preconsnition, rmat, htype = args
     op = htype["operator"]
     pt = htype["perturbation"]
     delta = np.linspace(-nx,nx,4*nx)
@@ -218,28 +286,6 @@ def cost_j(nx, nmem, model, xopt, icycle, *args):
             j = calc_j(x0, *args)
             jvalb[i+1,k] = j
     np.save("{}_cJ_{}_{}_cycle{}.npy".format(model, op, pt, icycle), jvalb)
-
-def cost_j2d(xmax, nmem, model, xopt, icycle, *args):
-    xc, pf, y, tmat, gmat, heinv, rinv, htype = args
-    op = htype["operator"]
-    pt = htype["perturbation"]
-    delta = np.linspace(-xmax,xmax,101, endpoint=True)
-    x_g = np.zeros((3,nmem))
-    x_g[0,:] = xopt
-    x_g[1,:] = calc_grad_j(np.zeros(nmem), *args)
-    x_g[2,0] = xmax
-    np.save("{}_x+g_{}_{}_cycle{}.npy".format(model, op, pt, icycle), x_g)
-
-    for i in range(nmem-1):
-        for j in range(i+1,nmem):
-            jval = np.zeros((len(delta),len(delta)))
-            x0 = np.zeros(nmem)
-            for k in range(len(delta)):
-                x0[i] = delta[k]
-                for l in range(len(delta)):
-                    x0[j] = delta[l]
-                    jval[l,k] = calc_j(x0, *args)
-            np.save("{}_cJ2d_{}_{}_{}{}_cycle{}.npy".format(model, op, pt, i, j, icycle), jval)
 
 def chi2_test(zmat, heinv, rmat, d):
     p = d.size

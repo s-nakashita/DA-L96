@@ -36,10 +36,11 @@ print("initial function value = {}".format(fval))
 print("initial gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
 
 for icall in range(2000):
-    oflag = lbfgs.lbfgs(n=n, m=m, x=x, f=fval, g=gval, \
+    [xk, oflag] = lbfgs.lbfgs(n=n, m=m, x=x, f=fval, g=gval, \
         diagco=diagco, diag=diag, \
         iprint=iprint, eps=eps, xtol=xtol, w=work, iflag=iflag)
     iflag = oflag
+    x = xk[:]
     fval = rosen(x)
     gval = rosen_der(x)
     print("iflag = {}".format(iflag))

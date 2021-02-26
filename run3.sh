@@ -1,20 +1,22 @@
 #!/bin/sh
 #set -x
-#operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
+#operators="linear test"
 operators="quadratic cubic quadratic-nodiff cubic-nodiff" # quartic quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
-perturbations="mlef mlefb mleft etkf"
+#perturbations="mlef05"
+perturbations="mlef grad mlefb mleft mlef05 grad05 mlefw" # mlef3 mlefh"
 na=20
 linf="F"
 lloc="F"
 ltlm="F"
 model=z08
 #vname="oberr"
-exp="c_vs_m"
+exp="minimize_method"
 echo ${exp} ${vname}
 #sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
 #sigma="0.1 0.01 0.001 0.0001"
 #lags="4 6 8 10 12 14 16 18"
+methods="lb bg cg nm gd"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
@@ -27,34 +29,39 @@ cd ${exp}
 cp ${src}/output.sh .
 cp ${src}/copy.sh .
 cp ${src}/plot.sh .
+cp ${src}/logging_config.ini .
 for op in ${operators}; do
   #./clean.sh  z08 ${op}
 #for obs_s in $sigma ; do
   #obs_s=0.01
 #for lag in $lags ; do
-  var=
+for method in $methods ; do
+  #var=
   #var=${lag} 
   #var=${obs_s}
-  ivar=0
+  var=${method}
+  #ivar=0
   #ivar=${lag} 
   #ivar=$(python iobs.py ${obs_s})
+  ivar=${var}
   #exp=${vname}${ivar}
   echo ${exp} ${vname}
   for pert in ${perturbations}; do
     pt=${pert}
     #pt=${pert:0:4}
-    #if test "${pert:5:2}" = "jh" ; then
-    #  ltlm="T"
-    #elif test "${pert:5:2}" = "fh" ; then
-    #  ltlm="F"
-    #fi
+    if test "${pert:5:2}" = "jh" ; then
+      ltlm="T"
+    elif test "${pert:5:2}" = "fh" ; then
+      ltlm="F"
+    fi
     #for count in $(seq 1 50); do
     echo ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var}
     echo ${vname} ${na} ${ivar}
     python ${src}/z08.py ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} > z08_${op}_${pert}.log 2>&1
     wait
-    tail -1 z08_e_${op}_${pt}.txt
+    #tail -1 z08_e_${op}_${pt}.txt
     #tail -1 z08_e_${op}_${pt}_${vname}${ivar}.txt
+    tail -1 z08_e_${op}_${pt}_${var}.txt
     #cp z08_e_${op}_${pt}_${vname}${ivar}.txt z08_e_${op}_${pert}_${vname}${ivar}.txt
     #mv z08_e_${op}_${pt}.txt z08_e_${op}_${pert}.txt
     #cp z08_chi_${op}_${pt}_${vname}${ivar}.txt z08_chi_${op}_${pt}.txt
@@ -77,6 +84,7 @@ for op in ${operators}; do
     #mv chi${ivar}_mean.txt z08_chi_${op}_${pt}.txt
     #rm chi${ivar}_*.txt
     #./output.sh ${exp} z08 ${op} ${pt} ${pert}
+    #python ../plotcj2d.py ${op} z08 ${na} ${pert}
   done # for perturbation
   rm obs*.npy
   #python plotcJb+o.py ${op} z08 ${na}
@@ -85,7 +93,7 @@ for op in ${operators}; do
   #  mv z08_cJo_${op}_cycle${i}.png z08_cJo_${op}_cycle${i}_${exp}${ivar}.png
   #done
   #./copy.sh z08 ${exp} ${op}
-  ./plot.sh z08 ${op} ${na} ${src}
+  #./plot.sh z08 ${op} ${na} ${src}
   #for pt in ${perturbations}; do
   #  convert -delay 10 z08_ua_${op}_${pt}_cycle*.png z08_ua_${op}_${pt}.gif
   #done
@@ -127,7 +135,10 @@ for op in ${operators}; do
 #done
 #python plottrpf.py ${op} ${model} ${na}
 #mv ${model}_trpf_${op}.png ${model}_trpf_${op}_${exp}.png
-#done # for obs_s
+done # for obs_s
+for pt in ${perturbations}; do
+  python ../plotemethod.py ${op} z08 ${na} ${pt}
+done
 #plot=eoberr
 #cp ${src}/plot${plot}.py .
 #python plot${plot}.py ${op} z08 ${na}

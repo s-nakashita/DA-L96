@@ -8,21 +8,26 @@ model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
-    perts = ["mlef", "mlefb", "mleft", "etkf"]
+    perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "mlefh"]
     #perts = ["mlef", "grad", "mlefb", "gradb", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
     linestyle = {"mlef":"solid", "grad":"dashed",
-     "mlefb":"solid", "mleft":"solid", "etkf":"solid",
-     "etkf-fh":"solid", "etkf-jh":"dashed"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"mlefb":'tab:cyan',"mleft":'tab:pink',"etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+     "mlef05":"solid", "grad05":"dashed", "mlef3":"dashed", "mlefw":"solid", "mlefh":"dashed",
+     "mlefb":"solid", "mleft":"dashed", 
+     "etkf":"solid", "etkf-fh":"solid", "etkf-jh":"dashed"}
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',
+    "mlefb":'tab:green',"mleft":'tab:red',
+    "mlef05":"tab:purple","grad05":"tab:olive",
+    "mlef3":"tab:brown","mlefw":"tab:pink", "mlefh":"tab:gray",
+    "etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
     sigma = {"linear": 8.0e-2, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-2, \
-    "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-2}
+    "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-2, "test":8.0e-2}
     x = np.arange(na+1)
     #x = np.arange(na) + 1
 elif model == "l96":
-    perts = ["mlef", "mlefb", "mleft", "etkf", "po", "srf", "letkf"]
+    perts = ["mlef", "grad", "mlefb", "mleft", "etkf", "po", "srf", "letkf"]
     #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
     linestyle = {"mlef":"solid", "grad":"solid", "mlefb":"solid", "mleft":"solid", \
         "etkf":"solid", "po":'solid',\

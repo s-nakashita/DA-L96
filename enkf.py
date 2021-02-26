@@ -28,8 +28,8 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             jhi = obs.dhdx(xf[:,i], op, ga)
             dy[:,i] = jhi @ dxf[:,i]
     else:
-        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
-        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
+        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
     d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     #d = y - np.squeeze(obs.h_operator(xf_, op, ga))
     
@@ -191,14 +191,15 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             #hrow = JH[i].reshape(1,-1)
             dyi = dy0[i,:].reshape(1,-1)
             #d1 = hrow @ p0 @ hrow.T + sig*sig
-            d1 = dyi @ dyi.T + sig*sig
+            d1 = dyi @ dyi.T/(nmem-1) + sig*sig
             #k1 = p0 @ hrow.T /d1
-            k1 = dx0 @ dyi.T /d1
+            k1 = dx0 @ dyi.T /d1/(nmem-1)
             k1_ = k1 / (1.0 + sig/np.sqrt(d1))
             if loc:
                 k1_ = k1_ * l_mat[:,i].reshape(k1_.shape)
             #xa_ = x0_.reshape(k1_.shape) + k1_ * (y[i] - hrow@x0_)
-            xa_ = x0_.reshape(k1_.shape) + k1_ * d0[i]
+            #xa_ = x0_.reshape(k1_.shape) + k1_ * d0[i]
+            xa_ = x0_.reshape(k1.shape) + k1 * d0[i]
             #dxa = (I - k1_@hrow) @ dx0
             dxa = dx0 - k1_ @ dyi
 
@@ -212,8 +213,8 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
                     jhi = obs.dhdx(x0[:,i], op, ga)
                     dy0[:,i] = jhi @ dx0[:,i]
             else:
-                dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-                #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
+                #dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
+                dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
             d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
             #d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
             #p0 = pa[:,:]

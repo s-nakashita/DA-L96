@@ -3,7 +3,7 @@
 #operators="quadratic cubic"
 operators="quadratic quadratic-nodiff cubic cubic-nodiff quartic quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
-perturbations="mlef mlefb mleft"
+perturbations="mlef grad"
 #perturbations="mlef grad etkf-fh etkf-jh"
 na=20
 linf="F"
@@ -11,9 +11,9 @@ lloc="F"
 ltlm="T"
 model=z08
 vname="oberr"
-exp="mlefb_oberr"
+exp="mlef_oberr"
 echo ${exp} ${vname}
-sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
+sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001"
 #sigma="0.005"
 #lags="4 6 8 10 12 14 16 18"
 #maxiter="1 5 10 15 20"
@@ -29,6 +29,7 @@ cp ${src}/calc_mean.py .
 cp ${src}/output.sh .
 cp ${src}/copy.sh .
 cp ${src}/plot.sh .
+cp ${src}/logging_config.ini .
 for op in ${operators}; do
   #./clean.sh  z08 ${op}
 for obs_s in $sigma ; do
