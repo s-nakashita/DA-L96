@@ -20,28 +20,67 @@ x = np.arange(21) + 1
 cmap = "coolwarm"
 #plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
 for pt in perts:
-    plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
-    fig, ax = plt.subplots()
+    for i in range(4):
+        plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
+        fig, ax = plt.subplots()
     #fig, ax = plt.subplots(2,2)
-    f = "{}_K_{}_{}_cycle{}.npy".format(model, op, pt, 0)
-    if not os.path.isfile(f):
-        print("not exist {}".format(f))
-        continue
-    K = np.load(f)[:20,:20]
-    j=0
-    ymin = np.min(K)-0.1
-    ymax = np.max(K)+0.1
-    ylim = max(np.abs(ymin),ymax)
-    mappable0 = ax.pcolor(x,x,K,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
-    ax.set_aspect("equal")
-    ax.set_xticks(x[::5])
-    ax.set_yticks(x[::5])
-    ax.set_ylabel("grid point")
-    ax.set_xlabel("observation point")
-    #ax.set_title("K")
-    pp = fig.colorbar(mappable0, ax=ax, orientation="vertical")
-    fig.savefig("{}_kb_{}_{}.png".format(model,op,pt))
-    fig.savefig("{}_kb_{}_{}.pdf".format(model,op,pt))
+        f = "{}_K_{}_{}_cycle{}.npy".format(model, op, pt, i)
+        if not os.path.isfile(f):
+            print("not exist {}".format(f))
+            continue
+        K = np.load(f)[:20,:20]
+        j=0
+        ymin = np.min(K)-0.1
+        ymax = np.max(K)+0.1
+        ylim = max(np.abs(ymin),ymax)
+        mappable0 = ax.pcolor(x,x,K,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
+        ax.set_aspect("equal")
+        ax.set_xticks(x[::5])
+        ax.set_yticks(x[::5])
+        ax.set_ylabel("grid point")
+        ax.set_xlabel("observation point")
+        ax.set_title(f"{op} cycle{i}")
+        pp = fig.colorbar(mappable0, ax=ax, orientation="vertical")
+        fig.savefig("{}_kb_{}_{}_cycle{}.png".format(model,op,pt,i))
+        fig.savefig("{}_kb_{}_{}_cycle{}.pdf".format(model,op,pt,i))
+        plt.close()   
+    
+        fig, ax = plt.subplots()
+        f = "{}_Kloc_{}_{}_cycle{}.npy".format(model, op, pt, i)
+        if not os.path.isfile(f):
+            print("not exist {}".format(f))
+            continue
+        Kloc = np.load(f)[:20,:20]
+        print(np.min(Kloc),np.max(Kloc))
+        j=1
+        ymin = np.min(Kloc)-0.1
+        ymax = np.max(Kloc)+0.1
+        ylim = max(np.abs(ymin),ymax)
+    #mappable1 = ax[j].pcolor(x,x,Kloc,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
+    #ax[j].set_aspect("equal")
+    #ax[j].set_xticks(x[::5])
+    #ax[j].set_yticks(x[::5])
+            #ax[j, i].invert_xaxis()
+            #ax[j, i].invert_yaxis()
+    #ax[j].set_title("After")
+    #pp = fig.colorbar(mappable1, ax=ax[j], orientation="vertical")
+        mappable1 = ax.pcolor(x,x,Kloc,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
+        ax.set_aspect("equal")
+        ax.set_xticks(x[::5])
+        ax.set_yticks(x[::5])
+        ax.set_ylabel("grid point")
+        ax.set_xlabel("observation point")
+        ax.set_title(f"{op} cycle{i}")
+            #ax[j, i].invert_xaxis()
+            #ax[j, i].invert_yaxis()
+    #axpos = ax[0].get_position()
+    #cbar_ax = fig.add_axes([0.90, axpos.y0/4, 0.02, 2*axpos.height])
+    #mappable = ScalarMappable(cmap=cmap)
+        pp = fig.colorbar(mappable1, ax=ax, orientation="vertical")
+    #pp.set_clim(ymin,ymax)
+    #fig.tight_layout()
+        fig.savefig("{}_kl_{}_{}_cycle{}.png".format(model,op,pt,i))
+        fig.savefig("{}_kl_{}_{}_cycle{}.pdf".format(model,op,pt,i))
     """
     mappable0 = ax[0,1].pcolor(x,x,K,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
     ax[0,1].set_aspect("equal")
@@ -139,40 +178,5 @@ for pt in perts:
     fig.savefig("{}_kb_{}_{}.png".format(model,op,pt))
     fig.savefig("{}_kb_{}_{}.pdf".format(model,op,pt))
     """
-    plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
-    fig, ax = plt.subplots()
-    f = "{}_Kloc_{}_{}_cycle{}.npy".format(model, op, pt, 0)
-    if not os.path.isfile(f):
-        print("not exist {}".format(f))
-        continue
-    Kloc = np.load(f)[:20,:20]
-    print(np.min(Kloc),np.max(Kloc))
-    j=1
-    ymin = np.min(Kloc)-0.1
-    ymax = np.max(Kloc)+0.1
-    ylim = max(np.abs(ymin),ymax)
-    #mappable1 = ax[j].pcolor(x,x,Kloc,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
-    #ax[j].set_aspect("equal")
-    #ax[j].set_xticks(x[::5])
-    #ax[j].set_yticks(x[::5])
-            #ax[j, i].invert_xaxis()
-            #ax[j, i].invert_yaxis()
-    #ax[j].set_title("After")
-    #pp = fig.colorbar(mappable1, ax=ax[j], orientation="vertical")
-    mappable1 = ax.pcolor(x,x,Kloc,cmap=cmap,norm=Normalize(vmin=-ylim,vmax=ylim))
-    ax.set_aspect("equal")
-    ax.set_xticks(x[::5])
-    ax.set_yticks(x[::5])
-    ax.set_ylabel("grid point")
-    ax.set_xlabel("observation point")
-            #ax[j, i].invert_xaxis()
-            #ax[j, i].invert_yaxis()
-    #axpos = ax[0].get_position()
-    #cbar_ax = fig.add_axes([0.90, axpos.y0/4, 0.02, 2*axpos.height])
-    #mappable = ScalarMappable(cmap=cmap)
-    pp = fig.colorbar(mappable1, ax=ax, orientation="vertical")
-    #pp.set_clim(ymin,ymax)
-    #fig.tight_layout()
-    fig.savefig("{}_kl_{}_{}.png".format(model,op,pt))
-    fig.savefig("{}_kl_{}_{}.pdf".format(model,op,pt))
+    
     #fig.savefig("{}_k_{}_{}.png".format(model,op,pt))

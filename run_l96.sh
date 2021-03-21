@@ -1,14 +1,14 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
-operators="linear quadratic cubic"
-perturbations="mlef etkf po srf letkf"
-#perturbations="mlef mlefb mleft"
+operators="linear abs"
+perturbations="mlef05" # grad05 etkf po srf letkf"
+#perturbations="mlef grad mlefb mleft mlef05 grad05 mlefw mlef3"
 #perturbations="mlef grad etkf-jh etkf-fh"
-na=100 # Number of assimilation cycle
+na=200 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
-exp="l96_test"
+exp="l96_abs"
 echo ${exp}
 src=$(pwd)
 rm -rf ${exp}
@@ -18,8 +18,10 @@ cp ../data.csv .
 cp ../logging_config.ini .
 gamma="1 2 3 4 5 6 7 8 9 10"
 inf="1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9"
+methods="lb bg cg nm gd"
 for op in ${operators}; do
   #for ga in ${gamma}; do
+  for method in $methods; do
     for pt in ${perturbations}; do
       #for infl_parm in ${inf}; do
       infl_parm=1.2
@@ -31,12 +33,16 @@ for op in ${operators}; do
           ltlm="F"
         fi
         #echo ${op} ${pt} ${na} ${linf} ${lloc} ${ltlm} ${ga}
-        echo ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} ${ga}
+        echo ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} ${method}
         #for count in $(seq 1 50); do
         #  echo ${count}
-          #python ../l96.py ${op} ${pt} ${na} ${linf} ${lloc} ${ltlm} ${ga} > l96_${op}_${pert}.log 2>&1
-          python ../l96.py ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} > l96_${op}_${pert}.log 2>&1
+          python ../l96.py ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} ${method} > l96_${op}_${pert}_${method}.log 2>&1
+          #python ../l96.py ${op} ${pt} ${na} ${infl_parm} ${lloc} ${ltlm} > l96_${op}_${pert}.log 2>&1
           wait
+          #if test ${pt} = "mlef05" || test ${pt} = "grad05" ; then
+          #  mv l96_e_${op}_${pt}.txt l96_e_${op}_${pt:0:4}.txt
+          #fi
+          cp l96_ut.npy truth.npy
           #mv l96_e_${op}_${pt}_ga${ga}.txt e${ga}_${count}.txt
           #rm obs*.npy
         #done
@@ -64,7 +70,10 @@ for op in ${operators}; do
     #python plotdy.py ${op} l96 ${na}
     #python plotlpf.py ${op} l96 ${na}
     #python ../ploteparam.py ${op} l96 ${na} infl
-  #done
+  done
+  for pt in ${perturbations}; do
+    python ../plotemethod.py ${op} l96 ${na} ${pt}
+  done
   #python ../plotega.py ${op} l96 ${na} 
   python ../plote.py ${op} l96 ${na}
   python ../plotgh.py ${op} l96 ${na}

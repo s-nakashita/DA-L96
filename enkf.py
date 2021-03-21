@@ -5,33 +5,39 @@ import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spo
 import obs
-
+#from obs2 import Obs
 
 #logging.config.fileConfig("logging_config.ini")
 #logger = logging.getLogger(__name__)
 
 
-def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_parm=1.0, \
+def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_parm=1.1, \
     save_dh=False, model="z08", icycle=0):
     op = htype["operator"]
     da = htype["perturbation"]
     ga = htype["gamma"]
+    #obs = Obs(op, sig)
     JH = obs.dhdx(xf_, op, ga)
+    #JH = obs.dh_operator(y[:,0], xf_)
     R = np.eye(y.size)*sig*sig
     rinv = np.eye(y.size)/sig/sig
+    #R, rmat, rinv = obs.set_r(y.shape[0])
     nmem = xf.shape[1]
     dxf = xf - xf_[:,None]
+    print(dxf.shape)
     if tlm:
-        #dy = JH @ dxf
-        dy = np.zeros((y.size,nmem))
-        for i in range(nmem):
-            jhi = obs.dhdx(xf[:,i], op, ga)
-            dy[:,i] = jhi @ dxf[:,i]
+        dy = JH @ dxf
+        #dy = np.zeros((y.size,nmem))
+        #for i in range(nmem):
+        #    jhi = obs.dhdx(xf[:,i], op, ga)
+        #    dy[:,i] = jhi @ dxf[:,i]
     else:
-        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
-        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)#[:, None]
+        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        #dy = obs.h_operator(y[:,0], xf) - np.mean(obs.h_operator(y[:,0], xf), axis=1)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
     d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
-    #d = y - np.squeeze(obs.h_operator(xf_, op, ga))
+    #d = y[:,1] - np.mean(obs.h_operator(y[:,0], xf), axis=1)
+    #d = y - obs.h_operator(xf_, op, ga)
     
     hes = np.eye(nmem) + dy.T @ rinv @ dy
     condh = la.cond(hes)
@@ -64,7 +70,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         print("save dxf")
         np.save("{}_dxf_{}_{}_cycle{}.npy".format(model, op, da, icycle), dxf)
         np.save("{}_dhdx_{}_{}_cycle{}.npy".format(model, op, da, icycle), JH)
-        np.save("{}_dy_{}_{}_cycle{}.npy".format(model, op, da, icycle), dy)
+        np.save("{}_dh_{}_{}_cycle{}.npy".format(model, op, da, icycle), dy)
         np.save("{}_d_{}_{}_cycle{}.npy".format(model, op, da, icycle), d)
     print("save_dh={} cycle{}".format(save_dh, icycle))
 
@@ -139,20 +145,22 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         xa = dxa + xa_[:,None]
         if save_dh:
             print("save ua")
-            ua = np.zeros((xa_.size,nmem+1))
-            ua[:,0] = xa_
-            ua[:,1:] = xa
-            np.save("{}_ua_{}_{}_cycle{}.npy".format(model, op, da, icycle), ua)
+            #ua = np.zeros((xa_.size,nmem+1))
+            #ua[:,0] = xa_
+            #ua[:,1:] = xa
+            np.save("{}_ua_{}_{}_cycle{}.npy".format(model, op, da, icycle), xa)
             #print("xa_={}".format(xa_))
             #print("xa={}".format(xa))
         pa = dxa@dxa.T/(nmem-1)
 
     elif da=="po":
         Y = np.zeros((y.size,nmem))
+        #Y = np.zeros((y.shape[0],nmem))
         np.random.seed(514)
         err = np.random.normal(0, scale=sig, size=Y.size)
         err_ = np.mean(err.reshape(Y.shape), axis=1)
         Y = y[:,None] + err.reshape(Y.shape)
+        #Y = y[:,1].reshape(-1,1) + err.reshape(Y.shape)
         #d_ = y + err_ - obs.h_operator(xf_, op, ga)
         d_ = d + err_
         if tlm:
@@ -169,6 +177,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             pa = (np.eye(xf_.size) - K @ JH) @ pf
         else:
             HX = obs.h_operator(xf, op, ga)
+            #HX = obs.h_operator(y[:,0], xf)
             xa = xf + K @ (Y - HX)
             pa = pf - K @ dy @ dxf.T / (nmem-1)
 
@@ -188,6 +197,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             print("==localization==")
             dist, l_mat = loc_mat(sigma=4.0, nx=xf_.size, ny=y.size)
         for i in range(y.size):
+        #for i in range(y.shape[0]):
             #hrow = JH[i].reshape(1,-1)
             dyi = dy0[i,:].reshape(1,-1)
             #d1 = hrow @ p0 @ hrow.T + sig*sig
@@ -207,15 +217,18 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             dx0 = dxa[:,:]
             x0 = x0_ + dx0
             if tlm:
-                #dy0 = obs.dhdx(x0_, op, ga) @ dx0
-                dy0 = np.zeros((y.size,nmem))
-                for i in range(nmem):
-                    jhi = obs.dhdx(x0[:,i], op, ga)
-                    dy0[:,i] = jhi @ dx0[:,i]
+                dy0 = obs.dhdx(x0_, op, ga) @ dx0
+                #dy0 = obs.dh_operator(y[:,0], x0_) @ dx0
+                #dy0 = np.zeros((y.size,nmem))
+                #for i in range(nmem):
+                #    jhi = obs.dhdx(x0[:,i], op, ga)
+                #    dy0[:,i] = jhi @ dx0[:,i]
             else:
-                #dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-                dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
+                dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
+                #dy0 = obs.h_operator(y[:,0], x0) - np.mean(obs.h_operator(y[:,0], x0), axis=1)[:, None]
+                #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
             d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
+            #d0 = y[:,1] - np.mean(obs.h_operator(y[:,0], x0), axis=1)
             #d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
             #p0 = pa[:,:]
             #print(x0_.shape)
@@ -236,6 +249,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             r0 = 5.0
         nx = xf_.size
         dist, l_mat = loc_mat(sigma, nx, ny=y.size)
+        #dist, l_mat = loc_mat(sigma, nx, ny=y.shape[0])
         print(dist[0])
         xa = np.zeros_like(xf)
         xa_ = np.zeros_like(xf_)
@@ -243,13 +257,16 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         E = np.eye(nmem)
         #hx = obs.h_operator(xf_, op, ga)
         hx = np.mean(obs.h_operator(xf, op, ga), axis=1)
+        #hx = np.mean(obs.h_operator(y[:,0], xf), axis=1)
         if infl:
             print("==inflation==")
             E /= alpha
         for i in range(nx):
             far = np.arange(y.size)
+            #far = np.arange(y.shape[0])
             far = far[dist[i]>r0]
             print("number of assimilated obs.={}".format(y.size - len(far)))
+            #print("number of assimilated obs.={}".format(y.shape[0] - len(far)))
             #yi = np.delete(y,far)
             #if tlm:
             #    Hi = np.delete(JH,far,axis=0)
@@ -285,6 +302,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
 
     #innv = y - obs.h_operator(xa_, op, ga)
     innv = y - np.mean(obs.h_operator(xa, op, ga), axis=1)
+    #innv = y[:,1] - np.mean(obs.h_operator(y[:,0], xa), axis=1)
     p = innv.size
     G = dy @ dy.T + R 
     chi2 = innv.T @ la.inv(G) @ innv / p

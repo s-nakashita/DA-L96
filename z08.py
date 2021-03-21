@@ -9,6 +9,8 @@ import mlef
 import mlefb
 import mleft
 import mlef05
+import mlef08
+import mlefsc
 import mlef2 as mlefw
 import mlef3
 import enkf
@@ -40,7 +42,7 @@ na =     20 # number of analysis
 
 #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4, \
 #        "quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
-sigma = {"linear": 8.0e-2, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-3, \
+sigma = {"linear": 1.0e-3, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-3, \
     "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-3, "test":8.0e-2}
 htype = {"operator": "linear", "perturbation": "mlef", "gamma": 1}
 linf = False
@@ -67,18 +69,42 @@ maxiter = None
 #if len(sys.argv) > 6:
 #    #htype["gamma"] = int(sys.argv[7])
 #    maxiter = int(sys.argv[6])
+#if len(htype["operator"]) > 11: # non-differentiable
 method = "LBFGS"
 method_short = "lb"
+#else:
+#    method = "CG"
+#    method_short = "cg"
+#method = "CG"
+#method_short = "cg"
+cgtype = None
+#cgtype = 3
 if len(sys.argv) > 6:
     method_short = sys.argv[6]
-    if method_short == "bg":
+    if method_short == "lb":
+        method = "LBFGS"
+    elif method_short == "bg":
         method = "BFGS"
     elif method_short == "cg":
         method = "CG"
     elif method_short == "nm":
         method = "Nelder-Mead"
+    elif method_short == "pw":
+        method = "Powell"
     elif method_short == "gd":
         method = "GD"
+    elif method_short == "ncg":
+        method = "Newton-CG"
+    elif method_short == "dog":
+        method = "dogleg"
+    elif method_short[0:3] == "cgf":
+        method = "CGF"
+        if method_short[4:] == "fr":
+            cgtype = 1
+        elif method_short[4:] == "pr":
+            cgtype = 2
+        elif method_short[4:] == "prb":
+            cgtype = 3
 t0m = [t0c + t0off//2 + t0off * i for i in range(-nmem//2, nmem//2)]
 t0f = [t0c] + t0m
 logger.info("nmem={} t0true={} t0f={}".format(nmem, t0true, t0f))
@@ -124,7 +150,8 @@ def gen_true(x, dt, nu, t0true, t0f, nt, na):
 
 
 def gen_obs(u, sigma, op):
-    y = add_noise(h_operator(u, op), sigma)
+    seed = 514
+    y = add_noise(h_operator(u, op), sigma, seed=seed)
     return y
 
 def get_obs(f):
@@ -143,9 +170,10 @@ def forecast(u, dx, dt, nu, kmax, htype):
 
 
 def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
-     maxiter=None, method="LBFGS",\
+     maxiter=None, method="LBFGS", cgtype=None,\
      infl=False, loc=False, tlm=True, \
      model="z08", icycle=0):
+    from copy import deepcopy
     logger.info("hist={}".format(hist))
     logger.info("cycle={}".format(icycle))
     #print("hist={}".format(hist))
@@ -154,9 +182,21 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
             method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
+    elif htype["perturbation"] == "mlef08" or htype["perturbation"] == "grad08":
+        ua, pa, chi2, ds, condh = mlef08.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+        u[:, 0] = ua
+        u[:, 1:] = ua[:, None] + pa
     elif htype["perturbation"] == "mlef05" or htype["perturbation"] == "grad05":
         ua, pa, chi2 = mlef05.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
-            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+            method=method, cgtype=cgtype, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+        u[:, 0] = ua
+        u[:, 1:] = ua[:, None] + pa
+        ds = 0.0
+        condh = 0.0
+    elif htype["perturbation"] == "mlefsc":
+        ua, pa, chi2 = mlefsc.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+            method=method, cgtype=cgtype, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
         ds = 0.0
@@ -205,7 +245,8 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
     return u, pa, chi2, ds, condh
 
 def plot_initial(u, ut, lag, model):
-    fig, ax = plt.subplots()
+    fig = plt.figure(figsize=(8,6))
+    ax = fig.add_subplot()
     x = np.arange(ut.size) + 1
     ax.plot(x, ut, label="true")
     for i in range(u.shape[1]):
@@ -216,7 +257,9 @@ def plot_initial(u, ut, lag, model):
     ax.set(xlabel="points", ylabel="u", title="initial lag={}".format(lag))
     ax.set_xticks(x[::10])
     ax.set_xticks(x[::5], minor=True)
+    ax.set_ylim([0.0,1.2])
     ax.legend()
+    fig.savefig("{}_initial_lag{}.png".format(model, lag))
     fig.savefig("{}_initial_lag{}.pdf".format(model, lag))
 
 if __name__ == "__main__":
@@ -236,7 +279,7 @@ if __name__ == "__main__":
         logger.info("read obs")
 #        print("read obs")
         obs = get_obs(obsfile)
-    #plot_initial(u, ut[0], t0off, model)
+    plot_initial(u, ut[0], t0off, model)
     #if pt == "mlef" or pt == "grad":
     #    p0 = u[:, 1:] - u[:, 0].reshape(-1,1) / np.sqrt(nmem-1)
     #    u[:, 1:] = u[:, 0].reshape(-1,1) + p0
@@ -248,12 +291,16 @@ if __name__ == "__main__":
     #else:
     #    sqrtpa = np.zeros((na, nx, nx))
     e = np.zeros(na+1)
-    if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "mlefw" or pt == "mlef3" or pt == "mlefh":
+    if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef3" or pt == "mlefh":
         e[0] = np.sqrt(np.mean((uf[0, :, 0] - ut[0, :])**2))
     else:
         e[0] = np.sqrt(np.mean((np.mean(uf[0, :, :], axis=1) - ut[0, :])**2))
     dpf = np.zeros(na+1)
-    if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "mlefw" or pt == "mlef3" or pt == "mlefh":
+    if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef3" or pt == "mlefh":
         pf = u[:, 1:] - u[:, 0].reshape(-1,1)
         dpf[0] = np.sqrt(np.mean(np.diag(pf@pf.T)))
     else:
@@ -272,22 +319,26 @@ if __name__ == "__main__":
         #y = gen_obs(ut[i,], obs_s, op)
         y = obs[i]
         logger.info("cycle{} analysis".format(i))
-        #if i in range(4):
-        if i == 0:
+        if i in range(4):
+        #if i == 0:
             #logger.info("first analysis")
 #            print("cycle{} analysis".format(i))
             u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
-                method=method, maxiter=maxiter, \
+                method=method, cgtype=cgtype, maxiter=maxiter, \
                 hist=True, dh=True,\
                 infl=linf, loc=lloc, tlm=ltlm,\
                 model=model, icycle=i)
         else:
             u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
-                method=method, maxiter=maxiter, infl=linf, loc=lloc, tlm=ltlm, model=model, icycle=i)
+                method=method, cgtype=cgtype, maxiter=maxiter, \
+                infl=linf, loc=lloc, tlm=ltlm, \
+                model=model, icycle=i)
         #print("ua={}".format(u))
         ua[i, :, :] = u
         #sqrtpa[i,:,:] = pa
-        if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "mlefw" or pt == "mlef3" or pt == "mlefh":
+        if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef3" or pt == "mlefh":
             dpa[i] = np.sqrt(np.mean(np.diag(pa@pa.T)))
             ndpa[i] = np.sqrt(np.mean(np.sum(pa@pa.T) - np.sum(np.diag(pa@pa.T))))
         else:
@@ -303,25 +354,35 @@ if __name__ == "__main__":
         if i < na-1:
             u = forecast(u, dx, dt, nu, nt, htype)
             uf[i+1, :, :] = u
-            if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "mlefw" or pt == "mlef3" or pt == "mlefh":
+        #uf[i, :, :] = u
+            if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
+            pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+            pt == "mlef3" or pt == "mlefh":
                 pf = u[:, 1:] - u[:, 0].reshape(-1,1)
                 dpf[i+1] =  np.sqrt(np.mean(np.diag(pf@pf.T)))
             else:
                 pf = (u - np.mean(u, axis=1).reshape(-1,1))/np.sqrt(nmem-1)
                 dpf[i+1] =  np.sqrt(np.mean(np.diag(pf@pf.T)))
-            #print("xf={}".format(u))
-        if pt == "mlef" or pt =="grad" or pt == "mlef05" or pt == "mlefw" or pt == "mlef3" or pt == "mlefh":
+                #print("xf={}".format(u))
+        if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef3" or pt == "mlefh":
             e[i+1] = np.sqrt(np.mean((ua[i, :, 0] - ut[i, :])**2))
         else:
             e[i+1] = np.sqrt(np.mean((np.mean(ua[i, :, :], axis=1) - ut[i, :])**2))
     np.save("{}_ut.npy".format(model), ut)
-    #np.save("{}_uf_{}_{}.npy".format(model, op, pt), uf)
+    np.save("{}_uf_{}_{}.npy".format(model, op, pt), uf)
     np.save("{}_ua_{}_{}.npy".format(model, op, pt), ua)
     ##np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
     np.savetxt("{}_dpf_{}_{}.txt".format(model, op, pt), dpf)
     np.savetxt("{}_dpa_{}_{}.txt".format(model, op, pt), dpa)
     np.savetxt("{}_ndpa_{}_{}.txt".format(model, op, pt), ndpa)
-    if len(sys.argv) > 6:
+    if len(sys.argv) > 7:
+        oberr = str(int(obs_s*1e5)).zfill(5)
+        np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
+        np.savetxt("{}_chi_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), chi)
+        np.savetxt("{}_dof_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), dof)
+    elif len(sys.argv) > 6:
         #oberr = str(int(obs_s*1e5)).zfill(5)
         #np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
         #np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)

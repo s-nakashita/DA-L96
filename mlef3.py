@@ -60,6 +60,7 @@ def calc_grad_j(zeta, *args):
     xc, pf, y, precondition, rmat, htype = args
     nmem = zeta.size
     tmat = np.load("tmat.npy")
+    heinv = tmat.transpose() @ tmat
     gmat = pf @ tmat 
     x = xc + gmat @ zeta
     hx = obs.h_operator(x, htype["operator"], htype["gamma"])
@@ -69,14 +70,14 @@ def calc_grad_j(zeta, *args):
     else:
         dh = obs.h_operator(x[:, None] + pf, htype["operator"], htype["gamma"]) - hx[:, None]
     zmat = rmat @ dh
-    g = tmat @ zeta - zmat.transpose() @ rmat @ ob 
+    g = heinv @ zeta - tmat.transpose() @ zmat.transpose() @ rmat @ ob 
     tmat = precondition(zmat)
     np.save("tmat.npy", tmat)
     return g
     #return (nmem-1)*tmat @ zeta - dh.transpose() @ rinv @ ob
 
 
-def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,  
+def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS", 
         maxiter=None, disp=False, save_hist=False, save_dh=False,
         infl=False, loc = False, infl_parm=1.0, model="z08", icycle=100):
     global zetak
@@ -145,13 +146,14 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
     args_j = (xc, pf, y, precondition, rmat, htype)
     iprint = np.zeros(2, dtype=np.int32)
     iprint[0] = 1
-    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, args_j, iprint)
+    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, 
+                        args_j, iprint, method)
     logger.info("save_hist={}".format(save_hist))
 #    print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
     logger.info("check_grad={}".format(cg))
     if save_hist:
-        x = minimize.minimize_lbfgs(x0,callback=callback)
+        x = minimize(x0,callback=callback)
         logger.debug(zetak)
 #        print(len(zetak))
         jh = np.zeros(len(zetak))
@@ -176,53 +178,11 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6,
         elif model=="l96":
             cost_j(200, xf.shape[1], model, x, icycle, *args_j)
     else:
-        x = minimize.minimize_lbfgs(x0)
+        x = minimize(x0)
     tmat = np.load("tmat.npy")
     gmat = pf @ tmat
     xa = xc + gmat @ x
-    """
-    if save_hist:
-        #g = calc_grad_j(x0, *args_j)
-        #print("g={}".format(g))
-        res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp}, callback=callback)
-        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-        #        jac=None, options={'gtol':gtol, 'disp':disp}, callback=callback)
-        jh = np.zeros(len(zetak))
-        gh = np.zeros(len(zetak))
-        for i in range(len(zetak)):
-            jh[i] = calc_j(np.array(zetak[i]), *args_j)
-            g = calc_grad_j(np.array(zetak[i]), *args_j)
-            gh[i] = np.sqrt(g.transpose() @ g)
-        np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
-        np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
-        if model=="z08":
-            xmax = max(np.abs(np.min(res.x)),np.max(res.x))
-            print("resx max={}".format(xmax))
-            if xmax < 1000:
-                cost_j(1000, xf.shape[1], model, res.x, icycle, *args_j)
-            else:
-                xmax = int(xmax*0.01+1)*100
-                print("resx max={}".format(xmax))
-                cost_j(xmax, xf.shape[1], model, res.x, icycle, *args_j)
-        elif model=="l96":
-            cost_j(200, xf.shape[1], model, res.x, icycle, *args_j)
-    else:
-        res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-                jac=calc_grad_j, options={'gtol':gtol, 'maxiter':maxiter, 'disp':disp})
-        #res = spo.minimize(calc_j, x0, args=args_j, method='BFGS', \
-        #        jac=None, options={'gtol':gtol, 'disp':disp})
-#    logger.info("success={} message={}".format(res.success, res.message))
-    print("success={} message={}".format(res.success, res.message))
-#    logger.info("J={:7.3e} dJ={:7.3e} nit={}".format( \
-#            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
-    print("J={:7.3e} dJ={:7.3e} nit={}".format( \
-            res.fun, np.sqrt(res.jac.transpose() @ res.jac), res.nit))
-    print("x={}".format(gmat @ res.x))
-    xa = xc + gmat @ res.x
-    if save_dh:
-        np.save("{}_dx_{}_{}_cycle{}.npy".format(model, op, pt, icycle), gmat@res.x)
-    """
+    
     if pt == "grad":
         dh = obs.dhdx(xa, op, ga) @ pf
     else:

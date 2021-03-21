@@ -63,14 +63,18 @@ def calc_grad_j(w, *args):
 
 def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
        maxiter=None, disp=False, save_hist=False, save_dh=False, 
-       model="z08", icycle=0):
+       infl=False, loc = False, infl_parm=1.0, model="z08", icycle=0):
     global wk
+    wk = []
     op = htype["operator"]
     pt = htype["perturbation"]
     nmem = xf.shape[1]
     pf = xf - xc[:, None]
     #pf = (xf - xc[:, None]) / np.sqrt(nmem)
 #    logger.debug("norm(pf)={}".format(la.norm(pf)))
+    if infl:
+        logger.info("==inflation==, alpha={}".format(infl_parm))
+        pf *= infl_parm
     if pt == "grad":
 #        logger.debug("dhdx.shape={}".format(obs.dhdx(xc, op).shape))
         dh = obs.dhdx(xc, op) @ pf

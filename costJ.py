@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from burgers import step
 import obs
-
+import scipy.optimize as spo
 
 #logging.config.fileConfig("logging_config.ini")
 #logger = logging.getLogger()
@@ -120,14 +120,16 @@ def cost_j(nx, nmem, *args_j):
     return jvalb, jvalo
     #np.save("cJ_{}_{}.npy".format(op, pt), jval)
 
-def cost_j2d(xmax, nmem, model, xopt, icycle, htype, calc_j, calc_grad_j, *args):
+def cost_j2d(xmax, nmem, model, xk, icycle, htype, calc_j, calc_grad_j, *args):
     op = htype["operator"]
     pt = htype["perturbation"]
     delta = np.linspace(-xmax,xmax,101, endpoint=True)
-    x_g = np.zeros((3,nmem))
-    x_g[0,:] = xopt
-    x_g[1,:] = calc_grad_j(np.zeros(nmem), *args)
+    eps = 1.0e-8
+    x_g = np.zeros((xk.shape[0]+3,nmem))
+    x_g[0,:] = calc_grad_j(np.zeros(nmem), *args)
+    x_g[1,:] = spo.approx_fprime(np.zeros(nmem), calc_j, eps, *args)
     x_g[2,0] = xmax
+    x_g[3:,:] = xk
     np.save("{}_x+g_{}_{}_cycle{}.npy".format(model, op, pt, icycle), x_g)
 
     for i in range(nmem-1):

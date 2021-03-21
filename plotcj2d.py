@@ -39,9 +39,10 @@ if not os.path.isfile(f):
     print("not exist {}".format(f))
     exit()
 x_g = np.load(f)
-xopt = x_g[0,:]
-g = x_g[1,:]
+g = x_g[0,:]
+gap = x_g[1,:]
 xmax = x_g[2,0]
+xk = x_g[3:,:]
 nmem = x_g.shape[1]
 for i in range(nmem-1):
     for j in range(i+1,nmem):
@@ -74,14 +75,18 @@ for i in range(nmem-1):
             cntr = ax.contourf(xx, yy, cJ)
         #ax.contour(xx, yy, cJ, levels=8, locator=ticker.LogLocator())
         #cntr = ax.contourf(xx, yy, cJ, levels=8, locator=ticker.LogLocator())
-        ax.scatter(xopt[i], xopt[j], marker='^', color='orange')
+        for k in range(xk.shape[0]-1):
+            #ax.text(xk[k,i], xk[k,j], k, ha="center", color="k", size=14)
+            ax.scatter(xk[k,i], xk[k,j], marker='^', color='orange')
+        ax.scatter(xk[-1,i], xk[-1,j], marker='x', color='red')
         ax.quiver(0.0, 0.0, -g[i], -g[j], color='red')
+        #ax.quiver(0.0, 0.0, -gap[i], -gap[j], color='pink')
         ax.set_xticks(xaxis[::10])
         ax.set_yticks(yaxis[::10])
-        ax.set_xlabel(f'member{i+1}')
-        ax.set_ylabel(f'member{j+1}')
+        ax.set_xlabel(f'zeta{i+1}')
+        ax.set_ylabel(f'zeta{j+1}')
         ax.set_aspect("equal")
-        ax.set_title(f"member{i+1}-member{j+1}")
+        ax.set_title(f"zeta{i+1}-zeta{j+1}")
         fig.colorbar(cntr, ax=ax)
         fig.savefig("{}_cJ2d_{}_{}_{}{}_cycle0.png".format(model, op, pt, i, j))
         

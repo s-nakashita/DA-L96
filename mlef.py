@@ -64,7 +64,7 @@ def calc_grad_j(zeta, *args):
     #return (nmem-1)*tmat @ zeta - dh.transpose() @ rinv @ ob
 
 
-def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
+def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS", cgtype=None,
         maxiter=None, disp=False, save_hist=False, save_dh=False,
         infl=False, loc = False, infl_parm=1.0, model="z08", icycle=100):
     global zetak
@@ -132,8 +132,8 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
     args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype)
     iprint = np.zeros(2, dtype=np.int32)
     iprint[0] = 1
-    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, 
-                        args_j, iprint, method)
+    minimize = Minimize(x0.size, calc_j, jac=calc_grad_j, 
+                        args=args_j, iprint=iprint, method=method, cgtype=cgtype)
     logger.info("save_hist={}".format(save_hist))
 #    print("save_hist={} cycle{}".format(save_hist, icycle))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
@@ -151,22 +151,25 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
         np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
         np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
         if model=="z08":
-            xmax = max(np.abs(np.min(x)),np.max(x))
+            if len(zetak) > 0:
+                xmax = max(np.abs(np.min(zetak)),np.max(zetak))
+            else:
+                xmax = max(np.abs(np.min(x)),np.max(x))
             logger.debug("resx max={}".format(xmax))
 #            print("resx max={}".format(xmax))
-            if xmax < 1000:
+            #if xmax < 1000:
                 #cost_j(1000, xf.shape[1], model, x, icycle, *args_j)
                 #cost_j2d(1000, xf.shape[1], model, x, icycle, *args_j)
-                costJ.cost_j2d(1000, xf.shape[1], model, x, icycle, 
-                               htype, calc_j, calc_grad_j, *args_j)
-            else:
+            #    costJ.cost_j2d(1000, xf.shape[1], model, x, icycle, 
+            #                   htype, calc_j, calc_grad_j, *args_j)
+            #else:
                 #xmax = int(xmax*0.01+1)*100
-                xmax = np.ceil(xmax*0.001)*1000
-                logger.debug("resx max={}".format(xmax))
+            xmax = np.ceil(xmax*0.01)*100
+            logger.debug("resx max={}".format(xmax))
 #                print("resx max={}".format(xmax))
                 #cost_j(xmax, xf.shape[1], model, x, icycle, *args_j)
                 #cost_j2d(xmax, xf.shape[1], model, x, icycle, *args_j)
-                costJ.cost_j2d(xmax, xf.shape[1], model, x, icycle,
+            costJ.cost_j2d(xmax, xf.shape[1], model, x, icycle,
                                htype, calc_j, calc_grad_j, *args_j)
         elif model=="l96":
             cost_j(200, xf.shape[1], model, x, icycle, *args_j)

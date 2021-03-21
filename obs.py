@@ -29,6 +29,8 @@ def h_operator(x, operator="linear", gamma=1):
             return np.array([s])
         else:
             return s.reshape(1,-1)
+    elif operator == "abs":
+        return np.abs(x)
         
 
 def dhdx(x, operator="linear", gamma=1):
@@ -51,6 +53,8 @@ def dhdx(x, operator="linear", gamma=1):
     elif operator == "speed":
         s = np.sqrt(x[0]**2 + x[1]**2)
         return x.reshape(1,-1)/s
+    elif operator == "abs":
+        return np.diag(x/np.abs(x))
 
 
 def add_noise(x, sigma, seed=None):

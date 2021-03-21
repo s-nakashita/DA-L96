@@ -15,7 +15,7 @@ elif model == "l96":
 cycle = range(4)
 x = np.arange(nx) + 1
 for pt in perts:
-    fig, ax = plt.subplots(2,2)
+    fig, ax = plt.subplots()
     for j in range(2):
         for i in range(2):
             icycle = 2*j+i
@@ -24,10 +24,12 @@ for pt in perts:
                 print("not exist {}".format(f))
                 continue
             d = np.load(f)
-            ax[j, i].plot(x[:20], d[:20])
-            #ax[j, i].set_xticks(x[::5])
+            ax.plot(x[:20], d[:20], label=f"cycle{icycle}")
+    ax.set_xticks(x[:20:5])
             #ax[j, i].set_xticks(x[::5], minor=True)
-            ax[j, i].set_title("cycle{}".format(cycle[icycle]))
+            #ax[j, i].set_title("cycle{}".format(cycle[icycle]))
+    ax.set_title("innovation")
+    ax.legend()
     #ax[0, 1].legend(bbox_to_anchor=(1.05, 1.05), loc='upper left')
     fig.suptitle(op)
     fig.tight_layout(rect=[0,0,1,0.96])

@@ -1,24 +1,29 @@
 import sys
+import os
 import logging
 import numpy as np
 import pandas as pd
 from lorenz import step
 from obs import add_noise, h_operator
+#from obs2 import Obs
 import mlef
 import mlefb
 import mleft
+import mlef05
+import mlef2 as mlefw
+import mlef3
 import enkf
 
-#logging.config.fileConfig("logging_config.ini")
-#logger = logging.getLogger()
+logging.config.fileConfig("logging_config.ini")
+logger = logging.getLogger()
 
 global nx, F, dt, dx
 
 nx = 40     # number of points
 F  = 8.0    # forcing
 dt = 0.05 / 6  # time step (=1 hour)
-#logger.info("nx={} nu={} dt={:7.3e}".format(nx, nu, dt))
-print("nx={} F={} dt={:7.3e}".format(nx, F, dt))
+logger.info("nx={} F={} dt={:7.3e}".format(nx, F, dt))
+#print("nx={} F={} dt={:7.3e}".format(nx, F, dt))
 
 x = np.linspace(-2.0, 2.0, nx)
 dx = x[1] - x[0]
@@ -35,7 +40,7 @@ na =   100 # number of analysis
 namax = 1460 # max number of analysis (1 year)
 
 sigma = {"linear": 1.0, "quadratic": 8.0e-1, "cubic": 7.0e-2, \
-    "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0}
+    "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0, "abs":1.0}
 #sigma = {"linear": 1.0, "quadratic": 1.0, "cubic": 1.0, \
 #    "quadratic-nodiff": 1.0, "cubic-nodiff": 1.0, "test":1.0}
 htype = {"operator": "linear", "perturbation": "mlef", "gamma": 1}
@@ -60,16 +65,35 @@ if len(sys.argv) > 5:
 if len(sys.argv) > 6:
     if sys.argv[6] == "F":
         ltlm = False
+maxiter = None
+#if len(sys.argv) > 7:
+#    #htype["gamma"] = int(sys.argv[7])
+#    maxiter = int(sys.argv[6])
+method = "LBFGS"
+method_short = "lb"
 if len(sys.argv) > 7:
-    htype["gamma"] = int(sys.argv[7])
-#logger.info("nmem={} t0true={} t0f={}".format(nmem, t0true, t0f))
-print("nmem={} t0f={}".format(nmem, t0f))
-#logger.info("nt={} na={}".format(nt, na))
-print("nt={} na={}".format(nt, na))
-#logger.info("htype={} sigma={}".format(htype, sigma[htype["operator"]]))
-print("htype={} sigma={}".format(htype, sigma[htype["operator"]]))
-print("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
-print("inflation parameter={}".format(infl_parm))
+    method_short = sys.argv[7]
+    if method_short == "bg":
+        method = "BFGS"
+    elif method_short == "cg":
+        method = "CG"
+    elif method_short == "nm":
+        method = "Nelder-Mead"
+    elif method_short == "gd":
+        method = "GD"
+logger.info("nmem={} t0f={}".format(nmem, t0f))
+#print("nmem={} t0f={}".format(nmem, t0f))
+logger.info("nt={} na={}".format(nt, na))
+#print("nt={} na={}".format(nt, na))
+logger.info("htype={} sigma={}".format(htype, sigma[htype["operator"]]))
+#print("htype={} sigma={}".format(htype, sigma[htype["operator"]]))
+logger.info("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
+#print("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
+logger.info("inflation parameter={}".format(infl_parm))
+#print("inflation parameter={}".format(infl_parm))
+logger.info("minimization method={}".format(method))
+
+#obs = Obs(htype["operator"], sigma[htype["operator"]])
 
 def set_r(nx, sigma):
     rmat = np.diag(np.ones(nx) / sigma)
@@ -82,8 +106,19 @@ def get_true_and_obs(na, nx, sigma, op, gamma=1):
 
     #obs = pd.read_csv("observation_data.csv")
     #y = obs.values.reshape(na,nx)
-    seed = None
-    y = add_noise(h_operator(xt, op, gamma), sigma, seed=seed)
+    f = "obs_{}.npy".format(op)
+    if not os.path.isfile(f):
+        seed = 514
+        y = add_noise(h_operator(xt, op, gamma), sigma) #, seed=seed)
+        np.save(f, y)
+    else:
+        y = np.load(f)
+    #y = np.load("obs_{}.npy".format(op))
+    #y = np.zeros((na, nx, 2))
+    #obsloc = np.arange(nx)
+    #for k in range(na):
+    #    y[k,:,0] = obsloc[:]
+    #    y[k,:,1] = obs.add_noise(obs.h_operator(obsloc, xt[k]))
 
     return xt, y
 
@@ -94,21 +129,22 @@ def init_ens(nx,nmem,t0c,t0f,dt,F,pt,opt):
     tmp = np.zeros_like(X0c)
     maxiter = np.max(np.array(t0f))+1
     if(opt==0): # random
-        print("spin up max = {}".format(t0c))
+        logger.info("spin up max = {}".format(t0c))
         np.random.seed(514)
         for j in range(t0c):
             #X0 = step(X0, dt, F)
             X0c = step(X0c, dt, F)
-        if pt == "mlef" or pt == "grad":
-            X0[:, 0] = X0c
-            X0[:, 1:] = np.random.normal(0.0,1.0,size=(nx,nmem-1)) + X0c[:, None]
-        else:
-            X0 = np.random.normal(0.0,1.0,size=(nx,nmem)) + X0c[:, None]
+        logger.debug("X0c={}".format(X0c))
+        #if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "grad05" or pt == "mlefw" or pt == "mlef3":
+        #    X0[:, 0] = X0c
+        #    X0[:, 1:] = np.random.normal(0.0,1.0,size=(nx,nmem-1)) + X0c[:, None]
+        #else:
+        X0 = np.random.normal(0.0,1.0,size=(nx,nmem)) + X0c[:, None]
         #for j in range(t0c):
         #    X0 = step(X0, dt, F)
         #    X0c = step(X0c, dt, F)
     else: # lagged forecast
-        print("spin up max = {}".format(maxiter))
+        logger.info("spin up max = {}".format(maxiter))
         X0 = np.zeros((nx,nmem))
         tmp = X0c
         for j in range(maxiter):
@@ -129,27 +165,51 @@ def forecast(u, dt, F, kmax, htype):
 
 
 def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False, \
+    maxiter=None, method="CG", \
     infl=False, loc=False, tlm=True, infl_parm=1.0,\
     model="l96", icycle=0):
     #logger.info("hist={}".format(hist))
     print("hist={}".format(hist))
     if htype["perturbation"] == "mlef" or htype["perturbation"] == "grad":
         ua, pa, chi2, ds, condh = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
-            save_hist=hist, save_dh=dh, \
-            infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+            infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
+    elif htype["perturbation"] == "mlef05" or htype["perturbation"] == "grad05":
+        ua, pa, chi2 = mlef05.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+            infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
+        u[:, 0] = ua
+        u[:, 1:] = ua[:, None] + pa
+        ds = 0.0
+        condh = 0.0
+    elif htype["perturbation"] == "mlefw":
+        ua, pa, chi2 = mlefw.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+            infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
+        u[:, 0] = ua
+        u[:, 1:] = ua[:, None] + pa
+        ds = 0.0
+        condh = 0.0
+    elif htype["perturbation"] == "mlef3":
+        ua, pa, chi2, ds = mlef3.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+            infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
+        u[:, 0] = ua
+        u[:, 1:] = ua[:, None] + pa
+        condh = 0.0
     elif htype["perturbation"] == "mlefb":
         u_ = np.mean(u, axis=1)
         ua, ua_, pa, chi2, ds, condh = mlefb.analysis(u, u_, y, rmat, rinv, htype, \
-            save_hist=hist, save_dh=dh, \
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
             infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
         u[:, :] = ua
         #u[:, 1:] = ua[:, None] + pa
     elif htype["perturbation"] == "mleft":
         u_ = np.mean(u, axis=1)
         ua, ua_, pa, chi2, ds, condh = mleft.analysis(u, u_, y, rmat, rinv, htype, \
-            save_hist=hist, save_dh=dh, \
+            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
             infl = infl, loc = loc, infl_parm = infl_parm, model=model, icycle=icycle)
         u[:, :] = ua
         #u[:, 1:] = ua[:, None] + pa
@@ -186,17 +246,20 @@ if __name__ == "__main__":
     ga = htype["gamma"]
     model = "l96"
     rmat, rinv = set_r(nx, sigma[op])
+
     xt, obs = get_true_and_obs(namax, nx, sigma[op], op, ga)
+    logger.info("obs.shape={}".format(obs.shape))
     np.save("{}_ut.npy".format(model), xt[:na,:])
     x0 = init_ens(nx,nmem,t0c,t0f,dt,F,pt,opt=0)
-    if pt == "mlef" or pt == "grad":
+    if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "grad05" or pt == "mlefw" or pt == "mlef3":
         x0c = x0[:, 0]
-        pf = (x0 - x0c[:,None]) @ (x0 - x0c[:,None]).T
-        plot_initial(x0c, x0[:, 1:], xt[0,:], pt, model)
+        pf = (x0[:, 1:] - x0c[:,None]) @ (x0[:, 1:] - x0c[:,None]).T
+        #plot_initial(x0c, x0[:, 1:], xt[0,:], pt, model)
     else:
         pf = (x0 - np.mean(x0,axis=1).reshape(-1,1)) @ (x0 - np.mean(x0,axis=1).reshape(-1,1)).T/(nmem-1)
-        plot_initial(None, x0, xt[0,:], pt, model)
-    print("pf={}".format(pf))
+        #plot_initial(None, x0, xt[0,:], pt, model)
+    logger.info("p0 max {}, min {}".format(np.max(pf),np.min(pf)))
+    #print("pf={}".format(pf))
     u = np.zeros((nx, nmem))
     u[:, :] = x0
     #u[:, 0] = x0c
@@ -204,7 +267,7 @@ if __name__ == "__main__":
     xa = np.zeros((na, nx, nmem))
     xf = np.zeros_like(xa)
     xf[0, :, :] = u
-    if pt == "mlef" or pt == "grad":
+    if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "grad05" or pt == "mlefw" or pt == "mlef3":
         sqrtpa = np.zeros((na, nx, nmem-1))
     else:
         sqrtpa = np.zeros((na, nx, nx))
@@ -212,15 +275,17 @@ if __name__ == "__main__":
     chi = np.zeros(na)
     for i in range(na):
         y = obs[i]
+        logger.debug("obs={}".format(y))
         if i in range(0,4):
-            #logger.info("first analysis")
-            print("cycle{} analysis".format(i))
+            logger.info("cycle{} analysis".format(i))
             u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
+                method=method, maxiter=maxiter, \
                 hist=True, dh=True, \
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
                 model=model, icycle=i)
         else:
             u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
+                method=method, maxiter=maxiter, \
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
                 model=model, icycle=i)
         xa[i, :, :] = u
@@ -229,7 +294,7 @@ if __name__ == "__main__":
         if i < na-1:
             u = forecast(u, dt, F, nt, htype)
             xf[i+1, :, :] = u
-        if pt == "mlef" or pt == "grad":
+        if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "grad05" or pt == "mlefw" or pt == "mlef3":
             e[i] = np.sqrt(np.mean((xa[i, :, 0] - xt[i, :])**2))
         else:
             e[i] = np.sqrt(np.mean((np.mean(xa[i, :, :], axis=1) - xt[i, :])**2))
@@ -237,8 +302,10 @@ if __name__ == "__main__":
     np.save("{}_uf_{}_{}.npy".format(model, op, pt), xf)
     np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
     if len(sys.argv) > 7:
-        np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)
-        np.savetxt("{}_chi_{}_{}_ga{}.txt".format(model, op, pt, ga), chi)
+        #np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)
+        #np.savetxt("{}_chi_{}_{}_ga{}.txt".format(model, op, pt, ga), chi)
+        np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
+        np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
     else:
         np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
         np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
