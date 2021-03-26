@@ -66,7 +66,17 @@ def calc_grad_j(zeta, *args):
 
 def calc_hess(zeta, *args):
     xc, pf, y, tmat, gmat, heinv, rinv, htype = args
-    return heinv
+    x = xc + gmat @ zeta
+    if htype["perturbation"] == "grad05":
+    #if htype["perturbation"] == "grad":
+        dh = obs.dhdx(x, htype["operator"]) @ pf
+    else:
+        dh = obs.h_operator(x[:, None] + pf, htype["operator"]) - obs.h_operator(x, htype["operator"])[:, None]
+    hess = np.eye(zeta.size) + dh.transpose() @ rinv @ dh
+    hess = tmat @ hess @ tmat
+    logger.debug(f"hess={hess}")
+    return hess
+    #return heinv
     #return np.eye(zeta.size)
 
 def calc_step(alpha_t, zeta, dk, *args):
@@ -299,7 +309,8 @@ def minimize_bfgs(fun, zeta0, args=(), jac=None, calc_step=None, callback=None,
     return res.x, warnflag
 
 def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
-        maxiter=None, maxrest=20, disp=False, save_hist=False, save_dh=False, 
+        maxiter=None, restart=True, maxrest=20, 
+        disp=False, save_hist=False, save_dh=False, 
         infl=False, loc = False, infl_parm=1.0, model="z08", icycle=0):
     global zetak, alphak
     zetak = []
@@ -337,6 +348,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
         np.save("{}_pf_{}_{}_cycle{}.npy".format(model, op, pt, icycle), pf)
         np.save("{}_gmat_{}_{}_cycle{}.npy".format(model, op, pt, icycle), gmat)
     x0 = np.zeros(xf.shape[1])
+    x = x0
     htype_c = htype.copy()
     Method = method
     #if icycle == 0:
@@ -347,7 +359,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
         
     args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype_c)
     iprint = np.zeros(2, dtype=np.int32)
-    restart = 0 # restart counter
+    irest = 0 # restart counter
     flg = -1    # optimization result flag
     #if icycle != 0:
     #    logger.info("calculate gradient")
@@ -363,52 +375,60 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
 #    print("save_hist={}".format(save_hist))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
     logger.info("check_grad={}".format(cg))
-
-    if save_hist:
-        while restart < maxrest:
-            x, flg = minimize(x0, callback=callback)
+    if restart:
+        if save_hist:
+            jh = []
+            gh = []         
+        while irest < maxrest:
+            zetak = []
+            xold = x
+            if save_hist:
+                x, flg = minimize(x0, callback=callback)
+            else:
+                x, flg = minimize(x0)
+            irest += 1
+            if save_hist:
+                for i in range(len(zetak)):
+                    jh.append(calc_j(np.array(zetak[i]), *args_j))
+                    g = calc_grad_j(np.array(zetak[i]), *args_j)
+                    gh.append(np.sqrt(g.transpose() @ g))
             if flg == 0:
-                logger.info(f"converged at {restart}th restart")
+                logger.info(f"Converged at {irest}th restart")
                 break 
-            restart += 1
+            xup = x - xold
+            logger.debug(f"update : {xup}")
+            if np.sqrt(np.dot(xup,xup)) < 1e-10:
+                logger.info(f"Stagnation at {irest}th : solution not updated")
+                break
+                
             xa = xc + gmat @ x
             xc = xa
             if pt == "grad05":
                 dh = obs.dhdx(xc, op) @ pf
             else:
-                dh = obs.h_operator(xf, op) - obs.h_operator(xc, op)[:, None]
+                dh = obs.h_operator(xc[:, None] + pf, op) - obs.h_operator(xc, op)[:, None]
             zmat = rmat @ dh
             tmat, heinv = precondition(zmat)
-            pa = pf @ tmat 
-            pf = pa
+            #pa = pf @ tmat 
+            #pf = pa
             gmat = pf @ tmat
             args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype_c)
             x0 = np.zeros(xf.shape[1])
             #reload(minimize)
             minimize = Minimize(x0.size, calc_j, jac=calc_grad_j, hess=calc_hess,
-                        args=args_j, iprint=iprint, method=Method, cgtype=cgtype,
-                        maxiter=maxiter, restart=restart)
-        #x, flg = minimize_cg(calc_j, x0, args=args_j, jac=calc_grad_j, 
-        #                calc_step=calc_step, callback=callback)
-        #x, flg = minimize_bfgs(calc_j, x0, args=args_j, jac=calc_grad_j, 
-        #                calc_step=calc_step, callback=callback)
-
-        logger.debug(f"zetak={len(zetak)} alpha={len(alphak)}")
-        jh = np.zeros(len(zetak))
-        gh = np.zeros(len(zetak))
-        for i in range(len(zetak)):
-            jh[i] = calc_j(np.array(zetak[i]), *args_j)
-            g = calc_grad_j(np.array(zetak[i]), *args_j)
-            gh[i] = np.sqrt(g.transpose() @ g)
-        np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
-        np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
-        np.savetxt("{}_alpha_{}_{}_cycle{}.txt".format(model, op, pt, icycle), alphak)
-        if model=="z08":
-            if len(zetak) > 0:
-                xmax = max(np.abs(np.min(zetak)),np.max(zetak))
-            else:
-                xmax = max(np.abs(np.min(x)),np.max(x))
-            logger.debug("resx max={}".format(xmax))
+                    args=args_j, iprint=iprint, method=Method, cgtype=cgtype,
+                    maxiter=maxiter, restart=restart)
+        if save_hist:
+            logger.debug(f"zetak={len(zetak)} alpha={len(alphak)}")
+            np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
+            np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
+            np.savetxt("{}_alpha_{}_{}_cycle{}.txt".format(model, op, pt, icycle), alphak)
+            if model=="z08":
+                if len(zetak) > 0:
+                    xmax = max(np.abs(np.min(zetak)),np.max(zetak))
+                else:
+                    xmax = max(np.abs(np.min(x)),np.max(x))
+                logger.debug("resx max={}".format(xmax))
 #            print("resx max={}".format(xmax))
             #if xmax < 1000:
                 #cost_j(1000, xf.shape[1], model, x, icycle, *args_j)
@@ -417,43 +437,57 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
             #                   htype, calc_j, calc_grad_j, *args_j)
             #else:
                 #xmax = int(xmax*0.01+1)*100
-            xmax = np.ceil(xmax*0.01)*100
-            logger.debug("resx max={}".format(xmax))
+                xmax = np.ceil(xmax*0.01)*100
+                logger.debug("resx max={}".format(xmax))
 #                print("resx max={}".format(xmax))
                 #cost_j(xmax, xf.shape[1], model, x, icycle, *args_j)
                 #cost_j2d(xmax, xf.shape[1], model, x, icycle, *args_j)
-            costJ.cost_j2d(xmax, xf.shape[1], model, np.array(zetak), icycle,
+                costJ.cost_j2d(xmax, xf.shape[1], model, np.array(zetak), icycle,
                                htype, calc_j, calc_grad_j, *args_j)
-        elif model=="l96":
-            cost_j(200, xf.shape[1], model, x, icycle, *args_j)
+            elif model=="l96":
+                cost_j(200, xf.shape[1], model, x, icycle, *args_j)
     else:
-        while restart < maxrest:
+        #x, flg = minimize_cg(calc_j, x0, args=args_j, jac=calc_grad_j, 
+        #                calc_step=calc_step, callback=callback)
+        #x, flg = minimize_bfgs(calc_j, x0, args=args_j, jac=calc_grad_j, 
+        #                calc_step=calc_step, callback=callback)
+        if save_hist:
+            x, flg = minimize(x0, callback=callback)
+            jh = np.zeros(len(zetak))
+            gh = np.zeros(len(zetak))
+            for i in range(len(zetak)):
+                jh[i] = calc_j(np.array(zetak[i]), *args_j)
+                g = calc_grad_j(np.array(zetak[i]), *args_j)
+                gh[i] = np.sqrt(g.transpose() @ g)
+            logger.debug(f"zetak={len(zetak)} alpha={len(alphak)}")
+            np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
+            np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
+            np.savetxt("{}_alpha_{}_{}_cycle{}.txt".format(model, op, pt, icycle), alphak)
+            if model=="z08":
+                if len(zetak) > 0:
+                    xmax = max(np.abs(np.min(zetak)),np.max(zetak))
+                else:
+                    xmax = max(np.abs(np.min(x)),np.max(x))
+                logger.debug("resx max={}".format(xmax))
+#            print("resx max={}".format(xmax))
+            #if xmax < 1000:
+                #cost_j(1000, xf.shape[1], model, x, icycle, *args_j)
+                #cost_j2d(1000, xf.shape[1], model, x, icycle, *args_j)
+            #    costJ.cost_j2d(1000, xf.shape[1], model, x, icycle, 
+            #                   htype, calc_j, calc_grad_j, *args_j)
+            #else:
+                #xmax = int(xmax*0.01+1)*100
+                xmax = np.ceil(xmax*0.01)*100
+                logger.debug("resx max={}".format(xmax))
+#                print("resx max={}".format(xmax))
+                #cost_j(xmax, xf.shape[1], model, x, icycle, *args_j)
+                #cost_j2d(xmax, xf.shape[1], model, x, icycle, *args_j)
+                costJ.cost_j2d(xmax, xf.shape[1], model, np.array(zetak), icycle,
+                               htype, calc_j, calc_grad_j, *args_j)
+            elif model=="l96":
+                cost_j(200, xf.shape[1], model, x, icycle, *args_j)
+        else:
             x, flg = minimize(x0)
-            if flg == 0:
-                logger.info(f"converged at {restart}th restart")
-                break 
-            restart += 1
-            xa = xc + gmat @ x
-            xc = xa
-            if pt == "grad05":
-                dh = obs.dhdx(xc, op) @ pf
-            else:
-                dh = obs.h_operator(xf, op) - obs.h_operator(xc, op)[:, None]
-            zmat = rmat @ dh
-            tmat, heinv = precondition(zmat)
-            pa = pf @ tmat 
-            pf = pa
-            gmat = pf @ tmat
-            args_j = (xc, pf, y, tmat, gmat, heinv, rinv, htype_c)
-            x0 = np.zeros(xf.shape[1])
-            #reload(Minimize)
-            minimize = Minimize(x0.size, calc_j, jac=calc_grad_j, hess=calc_hess,
-                        args=args_j, iprint=iprint, method=Method, cgtype=cgtype,
-                        maxiter=maxiter, restart=restart)
-        #x = minimize_cg(calc_j, x0, args=args_j, jac=calc_grad_j, 
-        #                calc_step=calc_step)
-        #x = minimize_bfgs(calc_j, x0, args=args_j, jac=calc_grad_j, 
-        #                calc_step=calc_step)
         
     xa = xc + gmat @ x
     if pt == "grad05":

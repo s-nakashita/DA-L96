@@ -34,6 +34,18 @@ for i in range(4):
     diff = np.log10(jh.max())-np.log10(jh.min())
     if diff > 1:
         ax00.set_yscale("log")
+    if len(x) > 500:
+        ax00.set_xticks(x[::100])
+        ax00.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax00.set_xticks(x[::50])
+        ax00.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax00.set_xticks(x[::20])
+        ax00.set_xticks(x[::5], minor=True)
+    else:
+        ax00.set_xticks(x[::5])
+        ax00.set_xticks(x, minor=True)
 
     f = "{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, i)
     if not os.path.isfile(f):
@@ -48,6 +60,18 @@ for i in range(4):
     diff = np.log10(gh.max())-np.log10(gh.min())
     if diff > 1:
         ax10.set_yscale("log")
+    if len(x) > 500:
+        ax10.set_xticks(x[::100])
+        ax10.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax10.set_xticks(x[::50])
+        ax10.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax10.set_xticks(x[::20])
+        ax10.set_xticks(x[::5], minor=True)
+    else:
+        ax10.set_xticks(x[::5])
+        ax10.set_xticks(x, minor=True)
 
     f = "{}_alpha_{}_{}_cycle{}.txt".format(model, op, pt, i)
     if not os.path.isfile(f):
@@ -58,6 +82,18 @@ for i in range(4):
     jj = perts.index(pt)
     j = jj - int(jj/2)*2
     ax20.plot(x, alpha, linestyle=linestyle[j], label=pt)
+    if len(x) > 500:
+        ax20.set_xticks(x[::100])
+        ax20.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax20.set_xticks(x[::50])
+        ax20.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax20.set_xticks(x[::20])
+        ax20.set_xticks(x[::5], minor=True)
+    else:
+        ax20.set_xticks(x[::5])
+        ax20.set_xticks(x, minor=True)
 
     pt = perts[1]
     f = "{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, i)
@@ -73,6 +109,18 @@ for i in range(4):
     diff = np.log10(jh.max())-np.log10(jh.min())
     if diff > 1:
         ax01.set_yscale("log")
+    if len(x) > 500:
+        ax01.set_xticks(x[::100])
+        ax01.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax01.set_xticks(x[::50])
+        ax01.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax01.set_xticks(x[::20])
+        ax01.set_xticks(x[::5], minor=True)
+    else:
+        ax01.set_xticks(x[::5])
+        ax01.set_xticks(x, minor=True)
     
     f = "{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, i)
     if not os.path.isfile(f):
@@ -87,6 +135,18 @@ for i in range(4):
     diff = np.log10(gh.max())-np.log10(gh.min())
     if diff > 1:
         ax11.set_yscale("log")
+    if len(x) > 500:
+        ax11.set_xticks(x[::100])
+        ax11.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax11.set_xticks(x[::50])
+        ax11.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax11.set_xticks(x[::20])
+        ax11.set_xticks(x[::5], minor=True)
+    else:
+        ax11.set_xticks(x[::5])
+        ax11.set_xticks(x, minor=True)
 
     f = "{}_alpha_{}_{}_cycle{}.txt".format(model, op, pt, i)
     if not os.path.isfile(f):
@@ -97,6 +157,18 @@ for i in range(4):
     jj = perts.index(pt)
     j = jj - int(jj/2)*2
     ax21.plot(x, alpha, linestyle=linestyle[j], label=pt)
+    if len(x) > 500:
+        ax21.set_xticks(x[::100])
+        ax21.set_xticks(x[::20], minor=True)
+    elif len(x) > 100:
+        ax21.set_xticks(x[::50])
+        ax21.set_xticks(x[::10], minor=True)
+    elif len(x) > 100:
+        ax21.set_xticks(x[::20])
+        ax21.set_xticks(x[::5], minor=True)
+    else:
+        ax21.set_xticks(x[::5])
+        ax21.set_xticks(x, minor=True)
     
     ax00.set(xlabel="iteration", ylabel="cost function", title=op)
     ax01.set(xlabel="iteration", ylabel="cost function", title=op)
@@ -104,46 +176,6 @@ for i in range(4):
     ax11.set(xlabel="iteration", ylabel="|g|", title=op)
     ax20.set(xlabel="iteration", ylabel="alpha", title=op)
     ax21.set(xlabel="iteration", ylabel="alpha", title=op)
-    xaxis = np.arange(np.max(lenx)) + 1
-    if len(xaxis) > 100:
-        ax00.set_xticks(xaxis[::50])
-        ax00.set_xticks(xaxis[::10], minor=True)
-        ax01.set_xticks(xaxis[::50])
-        ax01.set_xticks(xaxis[::10], minor=True)
-        ax10.set_xticks(xaxis[::50])
-        ax10.set_xticks(xaxis[::10], minor=True)
-        ax11.set_xticks(xaxis[::50])
-        ax11.set_xticks(xaxis[::10], minor=True)
-        ax20.set_xticks(xaxis[::50])
-        ax20.set_xticks(xaxis[::10], minor=True)
-        ax21.set_xticks(xaxis[::50])
-        ax21.set_xticks(xaxis[::10], minor=True)
-    elif len(xaxis) > 100:
-        ax00.set_xticks(xaxis[::20])
-        ax00.set_xticks(xaxis[::5], minor=True)
-        ax01.set_xticks(xaxis[::20])
-        ax01.set_xticks(xaxis[::5], minor=True)
-        ax10.set_xticks(xaxis[::20])
-        ax10.set_xticks(xaxis[::5], minor=True)
-        ax11.set_xticks(xaxis[::20])
-        ax11.set_xticks(xaxis[::5], minor=True)
-        ax20.set_xticks(xaxis[::20])
-        ax20.set_xticks(xaxis[::5], minor=True)
-        ax21.set_xticks(xaxis[::20])
-        ax21.set_xticks(xaxis[::5], minor=True)
-    else:
-        ax00.set_xticks(xaxis[::5])
-        ax00.set_xticks(xaxis, minor=True)
-        ax01.set_xticks(xaxis[::5])
-        ax01.set_xticks(xaxis, minor=True)
-        ax10.set_xticks(xaxis[::5])
-        ax10.set_xticks(xaxis, minor=True)
-        ax11.set_xticks(xaxis[::5])
-        ax11.set_xticks(xaxis, minor=True)
-        ax20.set_xticks(xaxis[::5])
-        ax20.set_xticks(xaxis, minor=True)
-        ax21.set_xticks(xaxis[::5])
-        ax21.set_xticks(xaxis, minor=True)
     ax00.legend()
     ax01.legend()
     ax10.legend()

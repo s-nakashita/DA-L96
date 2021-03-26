@@ -9,12 +9,13 @@ na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
     #perts = ["mlef08m", "grad08m", "mlef08", "grad08", "mlef05", "grad05"]
-    #perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "mlefh"]
-    perts = ["mlef", "grad", "mlefsc", "mlefb", "gradb", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
+    perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "gradw"]
     linestyle = {"mlef":"solid", "grad":"dashed",
      "mlef08m":"solid", "grad08m":"dashed",
      "mlef08":"solid", "grad08":"dashed",
-     "mlef05":"solid", "grad05":"dashed", "mlefsc":"solid", "mlef3":"dashed", "mlefw":"solid", "mlefh":"dashed",
+     "mlef05":"solid", "grad05":"dashed", "mlefsc":"solid", "mlef3":"dashed", 
+     "mlefw":"solid", "gradw":"dashed",
+     "mlefh":"dashed",
      "mlefb":"solid", "mleft":"dashed", 
      "etkf":"solid", "etkf-fh":"solid", "etkf-jh":"dashed"}
     linecolor = {"mlef":'tab:blue',"grad":'tab:orange',
@@ -22,8 +23,17 @@ if model == "z08" or model == "z05":
     "mlef08":'tab:green',"grad08":'tab:red',
     "mlef05":"tab:purple","grad05":"tab:olive",
     "mlefsc":"tab:purple","mlefb":'tab:green',"mleft":'tab:red',
-    "mlef3":"tab:brown","mlefw":"tab:pink", "mlefh":"tab:gray",
+    "mlef3":"tab:brown",
+    "mlefw":"tab:blue", "gradw":"tab:orange", 
+    "mlefh":"tab:gray",
     "etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+#    perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
+#    linestyle = {"mlef":"solid", "grad":"solid", \
+#        "etkf":"solid", "po":'solid',\
+#        "srf":"solid", "letkf":"solid"}
+#    linecolor = {"mlef":'tab:blue',"grad":'tab:blue',\
+#        "etkf":'tab:green', "po":'tab:red',\
+#        "srf":"tab:pink", "letkf":"tab:purple"}
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
@@ -51,7 +61,7 @@ elif model == "l96":
     # "etkf-fh":"solid", "etkf-jh":"dashed"}
     #linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
     sigma = {"linear": 1.0, "quadratic": 8.0e-1, "cubic": 7.0e-2, \
-    "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0, "abs":1.0}
+    "linear-nodiff": 1.0, "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0, "abs":1.0}
     #sigma = {"linear": 1.0, "quadratic": 1.0, "cubic": 1.0, \
     #"quadratic-nodiff": 1.0, "cubic-nodiff": 1.0, "test":1.0}
     x = np.arange(na) + 1
@@ -66,7 +76,10 @@ for pt in perts:
     e = np.loadtxt(f)
     if np.isnan(e).any():
         continue
-    ax.plot(x, e[1:], linestyle=linestyle[pt], color=linecolor[pt], label=pt)
+    if model == "z08":
+        ax.plot(x, e[1:], linestyle=linestyle[pt], color=linecolor[pt], label=pt)
+    else:
+        ax.plot(x, e, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
     #ax.plot(x, e, linestyle="solid", color=linecolor[pt], label=pt)
     #f = "{}_e_{}-nodiff_{}.txt".format(model, op, pt)
     #if not os.path.isfile(f):
@@ -91,7 +104,7 @@ ax.legend(ncol=2)
 fig.savefig("{}_e_{}.pdf".format(model, op))
 fig.savefig("{}_e_{}.png".format(model, op))
 if model == "z08":
-    ax.set_ylim(1e-5,0.2)
+    ax.set_ylim(1e-5,1.0)
     ax.set_yscale("log")
     fig.savefig("{}_elog_{}.pdf".format(model, op))
     fig.savefig("{}_elog_{}.png".format(model, op))

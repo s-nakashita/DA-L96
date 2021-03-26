@@ -65,7 +65,7 @@ obs_s = sigma[htype["operator"]]
 #if len(sys.argv) > 6:
 #    #t0off = int(sys.argv[6])
 #    obs_s = float(sys.argv[6])
-maxiter = None
+maxiter = None # inner-loop iteration
 #if len(sys.argv) > 6:
 #    #htype["gamma"] = int(sys.argv[7])
 #    maxiter = int(sys.argv[6])
@@ -105,6 +105,13 @@ if len(sys.argv) > 6:
             cgtype = 2
         elif method_short[4:] == "prb":
             cgtype = 3
+restart = False
+maxrest = 10 # outer-loop iteration
+if len(sys.argv) > 7:
+    if sys.argv[7] == "T":
+        restart = True
+    elif sys.argv[7] == "F":
+        restart = False
 t0m = [t0c + t0off//2 + t0off * i for i in range(-nmem//2, nmem//2)]
 t0f = [t0c] + t0m
 logger.info("nmem={} t0true={} t0f={}".format(nmem, t0true, t0f))
@@ -117,7 +124,7 @@ logger.info("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
 #print("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
 logger.info("maximum minimization iteration={}".format(maxiter))
 #print("maximum minimization iteration={}".format(maxiter))
-logger.info("minimization method={}".format(method))
+logger.info("minimization method={} restart={}".format(method, restart))
 
 def set_r(nx, sigma):
     rmat = np.diag(np.ones(nx) / sigma)
@@ -170,7 +177,8 @@ def forecast(u, dx, dt, nu, kmax, htype):
 
 
 def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
-     maxiter=None, method="LBFGS", cgtype=None,\
+     method="LBFGS", cgtype=None,\
+     maxiter=None, restart=True, maxrest=20, \
      infl=False, loc=False, tlm=True, \
      model="z08", icycle=0):
     from copy import deepcopy
@@ -189,7 +197,9 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
         u[:, 1:] = ua[:, None] + pa
     elif htype["perturbation"] == "mlef05" or htype["perturbation"] == "grad05":
         ua, pa, chi2 = mlef05.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
-            method=method, cgtype=cgtype, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+            method=method, cgtype=cgtype, 
+            maxiter=maxiter, restart=restart, maxrest=maxrest,
+            save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
         ds = 0.0
@@ -201,9 +211,10 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
         u[:, 1:] = ua[:, None] + pa
         ds = 0.0
         condh = 0.0
-    elif htype["perturbation"] == "mlefw":
+    elif htype["perturbation"] == "mlefw" or htype["perturbation"] == "gradw":
         ua, pa, chi2 = mlefw.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
-            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+            method=method, maxiter=None, disp=True,
+            save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
         ds = 0.0
@@ -292,14 +303,14 @@ if __name__ == "__main__":
     #    sqrtpa = np.zeros((na, nx, nx))
     e = np.zeros(na+1)
     if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
-        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
         pt == "mlef3" or pt == "mlefh":
         e[0] = np.sqrt(np.mean((uf[0, :, 0] - ut[0, :])**2))
     else:
         e[0] = np.sqrt(np.mean((np.mean(uf[0, :, :], axis=1) - ut[0, :])**2))
     dpf = np.zeros(na+1)
     if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
-        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
         pt == "mlef3" or pt == "mlefh":
         pf = u[:, 1:] - u[:, 0].reshape(-1,1)
         dpf[0] = np.sqrt(np.mean(np.diag(pf@pf.T)))
@@ -319,25 +330,27 @@ if __name__ == "__main__":
         #y = gen_obs(ut[i,], obs_s, op)
         y = obs[i]
         logger.info("cycle{} analysis".format(i))
-        if i in range(4):
+        if i in range(na):
         #if i == 0:
             #logger.info("first analysis")
 #            print("cycle{} analysis".format(i))
             u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
-                method=method, cgtype=cgtype, maxiter=maxiter, \
+                method=method, cgtype=cgtype, \
+                maxiter=maxiter, restart=restart,\
                 hist=True, dh=True,\
                 infl=linf, loc=lloc, tlm=ltlm,\
                 model=model, icycle=i)
         else:
             u, pa, chi2, ds, condh = analysis(u, y, rmat, rinv, obs_s, htype, \
-                method=method, cgtype=cgtype, maxiter=maxiter, \
+                method=method, cgtype=cgtype, \
+                maxiter=maxiter, restart=restart,\
                 infl=linf, loc=lloc, tlm=ltlm, \
                 model=model, icycle=i)
         #print("ua={}".format(u))
         ua[i, :, :] = u
         #sqrtpa[i,:,:] = pa
         if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
-        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
         pt == "mlef3" or pt == "mlefh":
             dpa[i] = np.sqrt(np.mean(np.diag(pa@pa.T)))
             ndpa[i] = np.sqrt(np.mean(np.sum(pa@pa.T) - np.sum(np.diag(pa@pa.T))))
@@ -356,7 +369,7 @@ if __name__ == "__main__":
             uf[i+1, :, :] = u
         #uf[i, :, :] = u
             if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
-            pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+            pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
             pt == "mlef3" or pt == "mlefh":
                 pf = u[:, 1:] - u[:, 0].reshape(-1,1)
                 dpf[i+1] =  np.sqrt(np.mean(np.diag(pf@pf.T)))
@@ -365,7 +378,7 @@ if __name__ == "__main__":
                 dpf[i+1] =  np.sqrt(np.mean(np.diag(pf@pf.T)))
                 #print("xf={}".format(u))
         if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
-        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or \
+        pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
         pt == "mlef3" or pt == "mlefh":
             e[i+1] = np.sqrt(np.mean((ua[i, :, 0] - ut[i, :])**2))
         else:
@@ -377,12 +390,13 @@ if __name__ == "__main__":
     np.savetxt("{}_dpf_{}_{}.txt".format(model, op, pt), dpf)
     np.savetxt("{}_dpa_{}_{}.txt".format(model, op, pt), dpa)
     np.savetxt("{}_ndpa_{}_{}.txt".format(model, op, pt), ndpa)
-    if len(sys.argv) > 7:
-        oberr = str(int(obs_s*1e5)).zfill(5)
-        np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
-        np.savetxt("{}_chi_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), chi)
-        np.savetxt("{}_dof_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), dof)
-    elif len(sys.argv) > 6:
+    #if len(sys.argv) > 7:
+    #    oberr = str(int(obs_s*1e5)).zfill(5)
+    #    np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
+    #    np.savetxt("{}_chi_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), chi)
+    #    np.savetxt("{}_dof_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), dof)
+    #elif len(sys.argv) > 6:
+    if len(sys.argv) > 6:
         #oberr = str(int(obs_s*1e5)).zfill(5)
         #np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
         #np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)

@@ -1,14 +1,14 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
-operators="linear abs"
-perturbations="mlef05" # grad05 etkf po srf letkf"
+operators="linear linear-nodiff abs"
+perturbations="mlef grad etkf po srf letkf"
 #perturbations="mlef grad mlefb mleft mlef05 grad05 mlefw mlef3"
 #perturbations="mlef grad etkf-jh etkf-fh"
 na=200 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
-exp="l96_abs"
+exp="l96_nodiff"
 echo ${exp}
 src=$(pwd)
 rm -rf ${exp}
@@ -21,7 +21,8 @@ inf="1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9"
 methods="lb bg cg nm gd"
 for op in ${operators}; do
   #for ga in ${gamma}; do
-  for method in $methods; do
+  #for method in $methods; do
+  method=cgf_pr
     for pt in ${perturbations}; do
       #for infl_parm in ${inf}; do
       infl_parm=1.2
@@ -70,14 +71,14 @@ for op in ${operators}; do
     #python plotdy.py ${op} l96 ${na}
     #python plotlpf.py ${op} l96 ${na}
     #python ../ploteparam.py ${op} l96 ${na} infl
-  done
-  for pt in ${perturbations}; do
-    python ../plotemethod.py ${op} l96 ${na} ${pt}
-  done
+  #done
+  #for pt in ${perturbations}; do
+  #  python ../plotemethod.py ${op} l96 ${na} ${pt}
+  #done
   #python ../plotega.py ${op} l96 ${na} 
   python ../plote.py ${op} l96 ${na}
   python ../plotgh.py ${op} l96 ${na}
-  python ../plotjh.py ${op} l96 ${na}
+#  python ../plotjh.py ${op} l96 ${na}
 done
 #./plot.sh l96 ${exp} ${operators} ${na}
 #./copy.sh l96 ${exp} ${operators}

@@ -1,8 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import obs
-
-def plot_wind(xf, xf_, xa, xa_, y, sig, htype, pt, var):
+# xf : initial(forecast) ensemble
+# xf_ : initial(forecast) control or ensemble mean
+# xa : analysis ensemble
+# xa_ : analysis control or ensemble mean
+# y : observation
+# sig : observation error standard deviation
+# htype : dictionary of observation type and perturbation
+# var : experiment setting (optimization method etc.)
+def plot_wind(xf, xf_, xa, xa_, y, sig, htype, var):
     theta = np.linspace(0.0, 2.0*np.pi, 360)
     rmin = y - sig
     rmax = y + sig
@@ -40,16 +47,16 @@ def plot_wind(xf, xf_, xa, xa_, y, sig, htype, pt, var):
     ax[1].set_yticks(x, minor=True)
     ax[1].grid(which="major")
     ax[1].grid(which="minor", linestyle="dashed")
-    ax[1].set_title(pt + " analysis")
+    ax[1].set_title(htype["perturbation"] + " analysis")
     #ax[1].set_title(r"etkf analysis $\mathbf{H}_i \delta \mathbf{X}^f$")
     fig.tight_layout()
-    fig.savefig("{}_speed_{}.png".format(pt, var))
+    fig.savefig("{}_speed_{}.png".format(htype["perturbation"], var))
     plt.close()
 
-    sa = obs.h_operator(xa, htype["operator"], htype["gamma"])
+    sa = obs.h_operator(xa, htype["operator"])
     sa -= y
     vlim = 3.0 #max(np.max(sa), -np.min(sa))
     plt.hist(sa[0], bins=100, density=True, range=(-vlim,vlim))
     plt.title(r"$y-H(x^a_i)$")
-    plt.savefig("{}_hist_{}.png".format(pt, var))
+    plt.savefig("{}_hist_{}.png".format(htype["perturbation"], var))
     plt.close()

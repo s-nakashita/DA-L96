@@ -15,6 +15,8 @@ def h_operator(x, operator="linear", gamma=1):
         return x**3
     elif operator == "quartic":
         return x**4 
+    elif operator == "linear-nodiff":
+        return np.where(x >= 0.5, x, -x)
     elif operator == "quadratic-nodiff":
         return np.where(x >= 0.5, x**2, -x**2)
     elif operator == "cubic-nodiff":
@@ -42,6 +44,8 @@ def dhdx(x, operator="linear", gamma=1):
         return np.diag(3 * x**2)
     elif operator == "quartic":
         return np.diag(4 * x**3)
+    elif operator == "linear-nodiff":
+        return np.diag(np.where(x >= 0.5, np.ones(x.size), -np.ones(x.size)))
     elif operator == "quadratic-nodiff":
         return np.diag(np.where(x >= 0.5, 2*x, -2*x))
     elif operator == "cubic-nodiff":

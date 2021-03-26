@@ -40,7 +40,7 @@ na =   100 # number of analysis
 namax = 1460 # max number of analysis (1 year)
 
 sigma = {"linear": 1.0, "quadratic": 8.0e-1, "cubic": 7.0e-2, \
-    "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0, "abs":1.0}
+    "linear-nodiff": 1.0, "quadratic-nodiff": 8.0e-1, "cubic-nodiff": 7.0e-2, "test":1.0, "abs":1.0}
 #sigma = {"linear": 1.0, "quadratic": 1.0, "cubic": 1.0, \
 #    "quadratic-nodiff": 1.0, "cubic-nodiff": 1.0, "test":1.0}
 htype = {"operator": "linear", "perturbation": "mlef", "gamma": 1}
@@ -69,8 +69,9 @@ maxiter = None
 #if len(sys.argv) > 7:
 #    #htype["gamma"] = int(sys.argv[7])
 #    maxiter = int(sys.argv[6])
-method = "LBFGS"
-method_short = "lb"
+method = "BFGS"
+method_short = "bg"
+cgtype = None
 if len(sys.argv) > 7:
     method_short = sys.argv[7]
     if method_short == "bg":
@@ -81,6 +82,29 @@ if len(sys.argv) > 7:
         method = "Nelder-Mead"
     elif method_short == "gd":
         method = "GD"
+    elif method_short == "pw":
+        method = "Powell"
+    elif method_short == "gd":
+        method = "GD"
+    elif method_short == "ncg":
+        method = "Newton-CG"
+    elif method_short == "dog":
+        method = "dogleg"
+    elif method_short[0:3] == "cgf":
+        method = "CGF"
+        if method_short[4:] == "fr":
+            cgtype = 1
+        elif method_short[4:] == "pr":
+            cgtype = 2
+        elif method_short[4:] == "prb":
+            cgtype = 3
+restart = False
+maxrest = 20 # outer-loop iteration
+if len(sys.argv) > 8:
+    if sys.argv[8] == "T":
+        restart = True
+    elif sys.argv[8] == "F":
+        restart = False
 logger.info("nmem={} t0f={}".format(nmem, t0f))
 #print("nmem={} t0f={}".format(nmem, t0f))
 logger.info("nt={} na={}".format(nt, na))
@@ -91,7 +115,7 @@ logger.info("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
 #print("inflation={} localization={} TLM={}".format(linf,lloc,ltlm))
 logger.info("inflation parameter={}".format(infl_parm))
 #print("inflation parameter={}".format(infl_parm))
-logger.info("minimization method={}".format(method))
+logger.info("minimization method={} restart={}".format(method, restart))
 
 #obs = Obs(htype["operator"], sigma[htype["operator"]])
 
@@ -165,20 +189,23 @@ def forecast(u, dt, F, kmax, htype):
 
 
 def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False, \
-    maxiter=None, method="CG", \
+    method="CG", cgtype=None,\
+    maxiter=None, restart=True, maxrest=20, 
     infl=False, loc=False, tlm=True, infl_parm=1.0,\
     model="l96", icycle=0):
-    #logger.info("hist={}".format(hist))
-    print("hist={}".format(hist))
+    logger.info("hist={}".format(hist))
+    #print("hist={}".format(hist))
     if htype["perturbation"] == "mlef" or htype["perturbation"] == "grad":
-        ua, pa, chi2, ds, condh = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
-            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
-            infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
-        u[:, 0] = ua
-        u[:, 1:] = ua[:, None] + pa
-    elif htype["perturbation"] == "mlef05" or htype["perturbation"] == "grad05":
+    #    ua, pa, chi2, ds, condh = mlef.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype, \
+    #        method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+    #        infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
+    #    u[:, 0] = ua
+    #    u[:, 1:] = ua[:, None] + pa
+    #elif htype["perturbation"] == "mlef05" or htype["perturbation"] == "grad05":
         ua, pa, chi2 = mlef05.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
-            method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, \
+            method=method, cgtype=cgtype,
+            maxiter=maxiter, restart=restart, maxrest=maxrest, 
+            save_hist=hist, save_dh=dh, \
             infl=infl, loc=loc, infl_parm=infl_parm, model=model, icycle=icycle)
         u[:, 0] = ua
         u[:, 1:] = ua[:, None] + pa
@@ -276,16 +303,18 @@ if __name__ == "__main__":
     for i in range(na):
         y = obs[i]
         logger.debug("obs={}".format(y))
+        logger.info("cycle{} analysis".format(i))
         if i in range(0,4):
-            logger.info("cycle{} analysis".format(i))
             u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
-                method=method, maxiter=maxiter, \
+                method=method, cgtype=cgtype, \
+                maxiter=maxiter, restart=restart, maxrest=maxrest, \
                 hist=True, dh=True, \
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
                 model=model, icycle=i)
         else:
             u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
-                method=method, maxiter=maxiter, \
+                method=method, cgtype=cgtype, \
+                maxiter=maxiter, restart=restart, maxrest=maxrest, \
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
                 model=model, icycle=i)
         xa[i, :, :] = u
@@ -301,11 +330,11 @@ if __name__ == "__main__":
     np.save("{}_ua_{}_{}.npy".format(model, op, pt), xa)
     np.save("{}_uf_{}_{}.npy".format(model, op, pt), xf)
     np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
-    if len(sys.argv) > 7:
-        #np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)
-        #np.savetxt("{}_chi_{}_{}_ga{}.txt".format(model, op, pt, ga), chi)
-        np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
-        np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
-    else:
-        np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
-        np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
+    #if len(sys.argv) > 7:
+    #    #np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)
+    #    #np.savetxt("{}_chi_{}_{}_ga{}.txt".format(model, op, pt, ga), chi)
+    #    np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
+    #    np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
+    #else:
+    np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
+    np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)

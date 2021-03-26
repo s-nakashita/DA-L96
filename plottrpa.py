@@ -21,7 +21,7 @@ elif model == "z08":
 x = np.arange(na) + 1
 y = np.ones(x.shape)
 #fig, ax = plt.subplots(2)
-fig, ax = plt.subplots()
+fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(9,4))
 #fig, ax1 = plt.subplots()
 #ax2 = ax1.twinx()
 for pt in perts:
@@ -44,13 +44,15 @@ for pt in perts:
     #    continue
     #ndpa = np.loadtxt(f)
     #ax[0].plot(x, trpa, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
-    ax.plot(x, trpa / e[1:], linestyle="solid", color=linecolor[pt], label=pt)
+    ax1.plot(x, trpa, linestyle="solid", color=linecolor[pt], label=pt)
+    ax2.plot(x, trpa / e[1:], linestyle="solid", color=linecolor[pt], label=pt)
     #ax1.plot(x, trpa / e[1:], linestyle="solid", color=linecolor[pt], label=pt)
     #ax2.plot(x, e[1:], linestyle="dashed", color=linecolor[pt])
     #r = (ndpa / nx / (nx-1)) / (trpa / nx)
     #ax[1].plot(x, r, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
-ax.plot(x, y, linestyle="dotted", color='tab:purple')
-ax.set_yscale("log")
+ax2.plot(x, y, linestyle="dotted", color='tab:purple')
+ax1.set_yscale("log")
+ax2.set_yscale("log")
 #ax1.set_yscale("log")
 #ax2.set_yscale("log")
 #ax.set_ylim(1e-9,1e-3)
@@ -67,11 +69,16 @@ ax.set_yscale("log")
 #    ax.set_ylim(0.1, 10000.0)
 #    ax.set_yticks([1,10,100,1000,10000])
 plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
-ax.set(xlabel="analysis cycle", 
+ax1.set(xlabel="analysis cycle", 
+        ylabel="ratio",
+        title="trPa {}".format(op))
+ax2.set(xlabel="analysis cycle", 
         ylabel="ratio",
         title="trPa / rmse {}".format(op))
-ax.set_xticks(x[::len(x)//10])
-ax.set_xticks(x[::len(x)//20], minor=True)
+ax1.set_xticks(x[::len(x)//10])
+ax1.set_xticks(x[::len(x)//20], minor=True)
+ax2.set_xticks(x[::len(x)//10])
+ax2.set_xticks(x[::len(x)//20], minor=True)
 """
 ax1.set(xlabel="analysis cycle", 
         ylabel="ratio",
@@ -90,7 +97,8 @@ ax2.set(ylabel="rmse")
 #ax[1].set_xticks(x[::len(x)//20], minor=True)
 #ax[0].legend()
 plt.rcParams['legend.fontsize'] = 16 # fontsize arrange
-ax.legend()
+ax1.legend()
+ax2.legend()
 #ax1.legend()
 #fig.tight_layout()
 fig.savefig("{}_trpa_{}.png".format(model, op))

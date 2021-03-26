@@ -22,7 +22,7 @@ _status_message = {'success': 'Optimization terminated successfully.',
 class Minimize():
     def __init__(self, n, func, jac=None, hess=None, args=None, 
         iprint=np.array([0,0]), method="LBFGS", cgtype=None, maxiter=None,
-        restart=None):
+        restart=False):
         self.n = n
         self.m = 7
         self.func = func
@@ -41,7 +41,6 @@ class Minimize():
         self.lwork = np.zeros(self.llwork)
         # for cgfam
         self.desc = np.ones(self.n)
-        self.irest = 1
         # self.cgtype = 1 : Fletcher-Reeves
         #               2 : Polak-Ribiere
         #               3 : Positive Polak-Ribiere
@@ -58,8 +57,11 @@ class Minimize():
                                               "Polak-Ribiere" if self.cgtype == 2 else
                                               "Positive Polak-Ribiere" if self.cgtype == 3
                                               else ""))
-        self.restart = restart
-        logger.info(f"restart={self.restart}")
+        if restart:
+            self.irest = 1
+        else:
+            self.irest = 0
+        logger.info(f"restart={self.irest==1}")
          
     def __call__(self, x0, callback=None):
         if self.method == "LBFGS":
@@ -172,21 +174,22 @@ class Minimize():
         #if callback != None:
         #    callback(x, alpha)
         if self.maxiter is None:
-            maxiter = 20
+            maxiter = len(x0)*200
         else:
             maxiter = self.maxiter
         # check stagnation
         nomove = 0
-        for icall in range(maxiter):
-            [xk, alphak, oflag] = lbfgs(n=self.n, m=self.m, x=x, f=fval, g=gval, \
+        while icall < maxiter:
+            [xk, alphak, oflag, lsinfo] = lbfgs(n=self.n, m=self.m, x=x, f=fval, g=gval, \
                           diagco=self.diagco, diag=self.diag, \
                           iprint=self.iprint, eps=self.eps, xtol=self.xtol, w=self.lwork, \
                           iflag=iflag, irest=self.irest)
             iflag = oflag
+            logger.debug(f"iflag={iflag} lsinfo={lsinfo}")
             #update = np.dot((xk - x),(xk - x))
             #logger.debug(f"update={update}")
             x = xk[:]
-            if iflag == 1:
+            if iflag == 3: # line-search terminated successfully but not converged
                 #if update < 1e-5:
                 #    nomove += 1
                 #    if nomove > 2:
@@ -197,17 +200,20 @@ class Minimize():
                 #    nomove = 0 # reset stagnation counter
                 if callback != None:
                     callback(x, alphak)
-            if self.args != None:
-                fval = self.func(x, *self.args)
-                gval = self.jac(x, *self.args)
-            else:
-                fval = self.func(x)
-                gval = self.jac(x)
+                icall += 1
+            if iflag == 1: # in line-search iteration
+                if self.args != None:
+                    fval = self.func(x, *self.args)
+                    gval = self.jac(x, *self.args)
+                else:
+                    fval = self.func(x)
+                    gval = self.jac(x)
             if iflag == 0:
                 if callback != None:
                     callback(x, alphak)
                 logger.info("minimization success")
                 logger.info("iteration = {}".format(icall))
+                logger.info("final step-length = {}".format(alphak))
 #                print("iteration = {}".format(icall))
                 logger.info("final function value = {}".format(fval))
 #                print("final function value = {}".format(fval))
@@ -219,6 +225,7 @@ class Minimize():
                     callback(x, alphak)
                 logger.info("minimization failed, FLAG = {}".format(iflag))
                 logger.info("iteration = {}".format(icall))
+                logger.info("final step-length = {}".format(alphak))
 #                print("iteration = {}".format(icall))
                 logger.info("final function value = {}".format(fval))
 #                print("final function value = {}".format(fval))
@@ -228,6 +235,7 @@ class Minimize():
         if iflag > 0:
             logger.info("minimization not converged")
 #            print("minimization not converged")
+            logger.info("current step-length = {}".format(alphak))
             logger.info("current function value = {}".format(fval))
 #            print("current function value = {}".format(fval))
             logger.info("current gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
@@ -261,7 +269,7 @@ class Minimize():
         #if callback != None:
         #    callback(x)
         if self.maxiter is None:
-            maxiter = 20
+            maxiter = len(x0)*200
         else:
             maxiter = self.maxiter
         while icall < maxiter:
@@ -274,8 +282,6 @@ class Minimize():
             finish = bool(ofinish==1)
             xold = x[:]
             dold = self.desc[:]
-            if callback != None and iflag == 1:
-                callback(x, alphak)
             if self.args != None:
                 fval = self.func(x, *self.args)
                 gval = self.jac(x, *self.args)
@@ -284,14 +290,17 @@ class Minimize():
                 gval = self.jac(x)
             gold_old = gold[:]
             gold = gval[:]
-            if iflag == 1:
-                icall += 1
+            #if iflag == 1:
+            #    icall += 1
             if iflag == 2:
+                if callback != None:
+                    callback(x, alphak)
                 gnorm = np.sqrt(np.dot(gval, gval))
                 xnorm = np.sqrt(np.dot(x,x))
                 xnorm = max(1.0,xnorm)
                 if gnorm/xnorm <= self.eps:
                     finish = True
+                icall += 1
                 #tlev = self.eps*(1.0+np.abs(fval))
                 #i = 0
                 #if (np.abs(gval[i]) > tlev):
@@ -303,11 +312,12 @@ class Minimize():
             if iflag <= 0:
                 break
         if iflag == 0:
-            if callback != None:
-                callback(x, alphak)
+            #if callback != None:
+            #    callback(x, alphak)
             logger.info("minimization success")
             logger.info("iteration = {}".format(icall))
 #                print("iteration = {}".format(icall))
+            logger.info("final step-length = {}".format(alphak))
             logger.info("final function value = {}".format(fval))
 #                print("final function value = {}".format(fval))
             logger.info("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
@@ -319,6 +329,7 @@ class Minimize():
             logger.info("minimization failed, FLAG = {}".format(iflag))
             logger.info("iteration = {}".format(icall))
 #                print("iteration = {}".format(icall))
+            logger.info("final step-length = {}".format(alphak))
             logger.info("final function value = {}".format(fval))
 #                print("final function value = {}".format(fval))
             logger.info("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
@@ -327,6 +338,7 @@ class Minimize():
         if iflag > 0:
             logger.info("minimization not converged")
 #            print("minimization not converged")
+            logger.info("current step-length = {}".format(alphak))
             logger.info("current function value = {}".format(fval))
 #            print("current function value = {}".format(fval))
             logger.info("current gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))

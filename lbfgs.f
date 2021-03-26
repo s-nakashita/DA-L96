@@ -6,11 +6,11 @@ C     LBFGS SUBROUTINE
 C     ****************
 C
       SUBROUTINE LBFGS(N,M,X,F,G,DIAGCO,DIAG,IPRINT,EPS,XTOL,W,IFLAG,
-     *       IREST, XK, STPK, OFLAG)
+     *       IREST, XK, STPK, OFLAG, LSINFO)
 C
       INTEGER, INTENT(IN) :: N,M,IPRINT(2)
       INTEGER, INTENT(IN) :: IFLAG, IREST
-      INTEGER, INTENT(OUT) :: OFLAG
+      INTEGER, INTENT(OUT) :: OFLAG, LSINFO
       DOUBLE PRECISION, INTENT(INOUT) :: X(N),G(N),DIAG(N),
      * W(N*(2*M+1)+2*M)
       DOUBLE PRECISION, INTENT(OUT) :: XK(N), STPK
@@ -257,7 +257,7 @@ C      PRINT*, SIZE(W)
 C      PRINT*, IFLAG
 
       IF(IFLAG.EQ.0) GO TO 10
-      GO TO (172,100) IFLAG
+      GO TO (172,100,80) IFLAG
   10  ITER= 0
       IF(N.LE.0.OR.M.LE.0) GO TO 196
       IF(GTOL.LE.1.D-04) THEN
@@ -380,15 +380,16 @@ C     ------------------------------
 C
        DO 160 I=1,N
  160   W(ISPT+POINT*N+I)= W(I)
-      IF (IREST.EQ.1.AND.NRST.GT.N) THEN
-        PRINT *, "RESTART"
-        NRST=0
-        NEW=.TRUE.
-        DO 162 I=1,N
- 162    W(ISPT+POINT*N+I)= -G(I)
-        GO TO 165
-      END IF
-      NEW=.FALSE.
+C      IF (IREST.EQ.1.AND.NRST.GT.N) THEN
+C        PRINT *, "RESTART"
+C        NRST=0
+C        NEW=.TRUE.
+C        DO 162 I=1,N
+C 162    W(ISPT+POINT*N+I)= -G(I)
+C        GO TO 165
+C      END IF
+C      NEW=.FALSE.
+
 C
 C     OBTAIN THE ONE-DIMENSIONAL MINIMIZER OF THE FUNCTION 
 C     BY USING THE LINE SEARCH ROUTINE MCSRCH
@@ -402,6 +403,7 @@ C     ----------------------------------------------------
       CALL MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,
      *            XTOL,MAXFEV,INFO,NFEV,DIAG)
 C      PRINT*, "INFO=", INFO
+      LSINFO = INFO
       IF (INFO .EQ. -1) THEN
 C        IFLAG=1
         OFLAG=1
@@ -443,8 +445,15 @@ C         PRINT*, "RETURN FROM L413"
          DO 176 I=1,N
  176     XK(I) = X(I)
          RETURN
+      ELSE
+         OFLAG=3
+C         PRINT*, "RETURN FROM L413"
+         STPK = STP
+         DO 178 I=1,N
+ 178     XK(I) = X(I)
+         RETURN
       ENDIF
-      GO TO 80
+C      GO TO 80
 C
 C     ------------------------------------------------------------
 C     END OF MAIN ITERATION LOOP. ERROR EXITS.
@@ -954,7 +963,7 @@ C           AND TO COMPUTE THE NEW STEP.
 C
             CALL MCSTEP(STX,FXM,DGXM,STY,FYM,DGYM,STP,FM,DGM,
      *                 BRACKT,STMIN,STMAX,INFOC)
-            PRINT *, "INFOC=", INFOC
+C            PRINT *, "INFOC=", INFOC
 C
 C           RESET THE FUNCTION AND GRADIENT VALUES FOR F.
 C
@@ -969,7 +978,7 @@ C           AND TO COMPUTE THE NEW STEP.
 C
             CALL MCSTEP(STX,FX,DGX,STY,FY,DGY,STP,F,DG,
      *                 BRACKT,STMIN,STMAX,INFOC)
-            PRINT *, "INFOC=", INFOC
+C            PRINT *, "INFOC=", INFOC
             END IF
 C
 C        FORCE A SUFFICIENT DECREASE IN THE SIZE OF THE

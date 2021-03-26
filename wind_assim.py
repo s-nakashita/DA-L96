@@ -39,9 +39,10 @@ pf = xf - xfc[:, None]
 dxf = (xf - xf_[:, None])/np.sqrt(nmem-1)
 x0 = np.zeros(nmem)
 # mlef05
-var = "cgf-outer"
-htype["perturbation"] = "mlef05"
-xc, pa, chi2 = analysis05(xf, xfc, y, rmat, rinv, htype, method="CGF", cgtype=1, maxiter=5)
+var = "tnc"
+htype["perturbation"] = "mlefw"
+xc, pa, chi2 = analysis2(xf, xfc, y, rmat, rinv, htype, maxiter=200)#, method="CGF", 
+#                          cgtype=3, maxiter=5, restart=True)
 xa = xc[:, None] + pa
 print(np.sqrt(xc[0]**2 + xc[1]**2))
-plot_wind(xf, xfc, xa, xc, y, sig, htype, "mlef05", var)
+plot_wind(xf, xfc, xa, xc, y, sig, htype, "mlefw", var)
