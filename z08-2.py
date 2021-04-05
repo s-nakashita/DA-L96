@@ -36,6 +36,8 @@ t0off =  12 # initial offset between adjacent members
 t0true = 20 # t0 for true
 t0c =    60 # t0 for control
 #t0c = t0true
+t0l = t0c + t0off // 2 - t0off * nmem//2
+t0r = t0c + t0off // 2 + t0off * nmem//2
             # t0 for ensemble members
 nt =     20 # number of step per forecast
 na =     20 # number of analysis
@@ -63,22 +65,24 @@ if len(sys.argv) > 5:
         ltlm = False
 obs_s = sigma[htype["operator"]]
 if len(sys.argv) > 6:
-    #t0off = int(sys.argv[6])
+    #nmem = int(sys.argv[6])
+    #t0off = min(t0off, 2 * t0c // nmem)
     obs_s = float(sys.argv[6])
 maxiter = None # inner-loop iteration
 #if len(sys.argv) > 6:
 #    #htype["gamma"] = int(sys.argv[7])
 #    maxiter = int(sys.argv[6])
-#if len(htype["operator"]) > 11: # non-differentiable
-method = "LBFGS"
-method_short = "lb"
-#else:
-#    method = "CG"
-#    method_short = "cg"
+if len(htype["operator"]) > 11: # non-differentiable
+    method = "LBFGS"
+    method_short = "lb"
+    cgtype = None
+else:
+    method = "CGF"
+    method_short = "cgf_prb"
+    cgtype = 3
 #method = "CG"
 #method_short = "cg"
-cgtype = None
-#cgtype = 3
+#cgtype = None
 if len(sys.argv) > 7:
     method_short = sys.argv[7]
     if method_short == "lb":
@@ -93,8 +97,12 @@ if len(sys.argv) > 7:
         method = "Powell"
     elif method_short == "gd":
         method = "GD"
+    elif method_short == "gdf":
+        method = "GDF"
     elif method_short == "ncg":
-        method = "Newton-CG"
+        method = "NCG"
+    elif method_short == "tnc":
+        method = "TNC"
     elif method_short == "dog":
         method = "dogleg"
     elif method_short[0:3] == "cgf":
@@ -264,14 +272,14 @@ def plot_initial(u, ut, lag, model):
         if i==0:
             ax.plot(x, u[:,i], label="control")
         else:
-            ax.plot(x, u[:,i], linestyle="--", color="tab:green", label="mem{}".format(i))
+            ax.plot(x, u[:,i], linestyle="--", color="tab:green") #, label="mem{}".format(i))
     ax.set(xlabel="points", ylabel="u", title="initial lag={}".format(lag))
     ax.set_xticks(x[::10])
     ax.set_xticks(x[::5], minor=True)
     ax.set_ylim([0.0,1.2])
     ax.legend()
-    fig.savefig("{}_initial_lag{}.png".format(model, lag))
-    fig.savefig("{}_initial_lag{}.pdf".format(model, lag))
+    fig.savefig("{}_initial_nmem{}.png".format(model, u.shape[1]-1))
+    fig.savefig("{}_initial_nmem{}.pdf".format(model, u.shape[1]-1))
 
 if __name__ == "__main__":
     op = htype["operator"]
@@ -391,20 +399,21 @@ if __name__ == "__main__":
     np.savetxt("{}_dpf_{}_{}.txt".format(model, op, pt), dpf)
     np.savetxt("{}_dpa_{}_{}.txt".format(model, op, pt), dpa)
     np.savetxt("{}_ndpa_{}_{}.txt".format(model, op, pt), ndpa)
-    if len(sys.argv) > 8:
+    if len(sys.argv) > 7:
         oberr = str(int(obs_s*1e5)).zfill(5)
         np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
+        #np.savetxt("{}_e_{}_{}_nmem{}_{}.txt".format(model, op, pt, nmem, method_short), e)
         #np.savetxt("{}_chi_{}_{}_oberr{}_{}_{}.txt".format(model, op, pt, oberr, method_short), chi)
         #np.savetxt("{}_dof_{}_{}_oberr{}_{}_{}.txt".format(model, op, pt, oberr, method_short), dof)
     elif len(sys.argv) > 6:
     #if len(sys.argv) > 6:
-        #oberr = str(int(obs_s*1e5)).zfill(5)
-        #np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
-        #np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)
-        #np.savetxt("{}_dof_{}_{}_oberr{}.txt".format(model, op, pt, oberr), dof)
-        np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
-        np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
-        np.savetxt("{}_dof_{}_{}_{}.txt".format(model, op, pt, method_short), dof)
+        oberr = str(int(obs_s*1e5)).zfill(5)
+        np.savetxt("{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr), e)
+        np.savetxt("{}_chi_{}_{}_oberr{}.txt".format(model, op, pt, oberr), chi)
+        np.savetxt("{}_dof_{}_{}_oberr{}.txt".format(model, op, pt, oberr), dof)
+        #np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
+        #np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
+        #np.savetxt("{}_dof_{}_{}_{}.txt".format(model, op, pt, method_short), dof)
     else:
         np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
         np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)

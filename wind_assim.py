@@ -41,8 +41,8 @@ x0 = np.zeros(nmem)
 # mlef05
 var = "tnc"
 htype["perturbation"] = "mlefw"
-xc, pa, chi2 = analysis2(xf, xfc, y, rmat, rinv, htype, maxiter=200)#, method="CGF", 
-#                          cgtype=3, maxiter=5, restart=True)
+xc, pa, chi2 = analysis2(xf, xfc, y, rmat, rinv, htype, method="Newton", 
+                          cgtype=None, maxiter=None, restart=False)
 xa = xc[:, None] + pa
 print(np.sqrt(xc[0]**2 + xc[1]**2))
-plot_wind(xf, xfc, xa, xc, y, sig, htype, "mlefw", var)
+plot_wind(xf, xfc, xa, xc, y, sig, htype, var)

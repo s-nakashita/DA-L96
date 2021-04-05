@@ -6,14 +6,14 @@ C     LBFGS SUBROUTINE
 C     ****************
 C
       SUBROUTINE LBFGS(N,M,X,F,G,DIAGCO,DIAG,IPRINT,EPS,XTOL,W,IFLAG,
-     *       IREST, XK, STPK, OFLAG, LSINFO)
+     *       IREST, XK, DK, STPK, OFLAG)
 C
       INTEGER, INTENT(IN) :: N,M,IPRINT(2)
       INTEGER, INTENT(IN) :: IFLAG, IREST
-      INTEGER, INTENT(OUT) :: OFLAG, LSINFO
+      INTEGER, INTENT(OUT) :: OFLAG
       DOUBLE PRECISION, INTENT(INOUT) :: X(N),G(N),DIAG(N),
      * W(N*(2*M+1)+2*M)
-      DOUBLE PRECISION, INTENT(OUT) :: XK(N), STPK
+      DOUBLE PRECISION, INTENT(OUT) :: XK(N), DK(N), STPK
       DOUBLE PRECISION, INTENT(IN) :: F,EPS,XTOL
       LOGICAL, INTENT(IN) :: DIAGCO
 C     intent(in) N, M, IPRINT(2), F, G(N), DIAGCO, DIAG, IPRINT, EPS, XTOL, W
@@ -380,6 +380,8 @@ C     ------------------------------
 C
        DO 160 I=1,N
  160   W(ISPT+POINT*N+I)= W(I)
+       DO 162 I=1,N
+ 162   DK(I)= W(I)
 C      IF (IREST.EQ.1.AND.NRST.GT.N) THEN
 C        PRINT *, "RESTART"
 C        NRST=0
@@ -403,7 +405,7 @@ C     ----------------------------------------------------
       CALL MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,
      *            XTOL,MAXFEV,INFO,NFEV,DIAG)
 C      PRINT*, "INFO=", INFO
-      LSINFO = INFO
+C      LSINFO = INFO
       IF (INFO .EQ. -1) THEN
 C        IFLAG=1
         OFLAG=1
@@ -433,7 +435,8 @@ C
       GNORM= DSQRT(DDOT(N,G,1,G,1))
       XNORM= DSQRT(DDOT(N,X,1,X,1))
       XNORM= DMAX1(1.0D0,XNORM)
-      IF (GNORM/XNORM .LE. EPS) FINISH=.TRUE.
+C      IF (GNORM/XNORM .LE. EPS) FINISH=.TRUE.
+      IF (GNORM .LE. EPS) FINISH=.TRUE.
 C
       IF(IPRINT(1).GE.0) CALL LB1(IPRINT,ITER,NFUN,
      *               GNORM,N,M,X,F,G,STP,FINISH)

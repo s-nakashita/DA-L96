@@ -396,7 +396,7 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
                 logger.info(f"Converged at {irest}th restart")
                 break 
             xup = x - xold
-            logger.debug(f"update : {xup}")
+            #logger.debug(f"update : {xup}")
             if np.sqrt(np.dot(xup,xup)) < 1e-10:
                 logger.info(f"Stagnation at {irest}th : solution not updated")
                 break

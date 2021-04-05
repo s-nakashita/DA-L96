@@ -1,18 +1,18 @@
 #!/bin/sh
 #set -x
-operators="quadratic-nodiff cubic-nodiff quartic-nodiff"
-#operators="linear quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
+#operators="linear quadratic cubic quartic"
+operators="linear quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
 #perturbations="mlef08m grad08m mlef05 grad05 mlef08 grad08"
-perturbations="mlef grad"
+perturbations="mlef grad hyvar envar"
 na=20
 linf="F"
 lloc="F"
 ltlm="F"
-irest="T"
+irest="F"
 model=z08
 #vname="oberr"
-exp="cg-outer-refine2"
+exp="var"
 echo ${exp} ${vname}
 #sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
 #sigma="0.1 0.01 0.001 0.0001"
@@ -42,7 +42,7 @@ for op in ${operators}; do
   #var=${lag} 
   #var=${obs_s}
   #var=${method}
-  var=cgf_pr
+  var=cgf_fr
   #ivar=0
   #ivar=${lag} 
   #ivar=$(python iobs.py ${obs_s})
@@ -135,7 +135,7 @@ for op in ${operators}; do
   python ${src}/plottrpa.py ${op} z08 ${na}
 #  python ${src}/plotua.py ${op} z08 ${na}
 #  python ${src}/plotk.py ${op} z08 ${na}
-  python ${src}/plotgh.py ${op} z08 ${na}
+#  python ${src}/plotgh.py ${op} z08 ${na}
 #  for i in $(seq 0 3); do
 #    mv z08_gh_${op}_cycle${i}.png z08_gh_${op}_cycle${i}_${var}.png
 #  done

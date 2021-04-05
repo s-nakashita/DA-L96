@@ -10,9 +10,13 @@ from minimize import Minimize
 logging.config.fileConfig("./logging_config.ini")
 logger = logging.getLogger('anl')
 
-def callback(xk):
-    global zetak
+zetak = []
+alphak = []
+def callback(xk, alpha=None):
+    global zetak, alphak
     zetak.append(xk)
+    if alpha is not None:
+        alphak.append(alpha)
 
 def calc_j(x, *args):
     binv, JH, rinv, ob = args
@@ -26,11 +30,17 @@ def calc_grad_j(x, *args):
     d = JH @ x - ob
     return binv @ x + JH.T @ rinv @ d 
 
-def analysis(xf, binv, y, rinv, htype, gtol=1e-6, method="LBFGS", maxiter=None, 
+def calc_hess(x, *args):
+    binv, JH, rinv, ob = args
+    return binv + JH.T @ rinv @ JH
+
+def analysis(xf, binv, y, rinv, htype, gtol=1e-6, method="LBFGS", cgtype=None,
+    maxiter=None, restart=False, maxrest=20, 
     disp=False, save_hist=False, save_dh=False, 
     model="model", icycle=0):
-    global zetak
+    global zetak, alphak
     zetak = []
+    alphak = []
     op = htype["operator"]
     pt = htype["perturbation"]
     ga = htype["gamma"]
@@ -43,12 +53,13 @@ def analysis(xf, binv, y, rinv, htype, gtol=1e-6, method="LBFGS", maxiter=None,
     args_j = (binv, JH, rinv, ob)
     iprint = np.zeros(2, dtype=np.int32)
     iprint[0] = 1
-    minimize = Minimize(x0.size, 7, calc_j, calc_grad_j,
-                        args_j, iprint, method)
+    minimize = Minimize(x0.size, calc_j, jac=calc_grad_j, hess=calc_hess,
+                        args=args_j, iprint=iprint, method=method, cgtype=cgtype,
+                        maxiter=maxiter, restart=restart)
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
     logger.info("check_grad={}".format(cg))
     if save_hist:
-        x = minimize(x0, callback=callback)
+        x, flg = minimize(x0, callback=callback)
         jh = np.zeros(len(zetak))
         gh = np.zeros(len(zetak))
         for i in range(len(zetak)):
@@ -58,7 +69,7 @@ def analysis(xf, binv, y, rinv, htype, gtol=1e-6, method="LBFGS", maxiter=None,
         np.savetxt("{}_jh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), jh)
         np.savetxt("{}_gh_{}_{}_cycle{}.txt".format(model, op, pt, icycle), gh)
     else:
-        x = minimize(x0)
+        x, flg = minimize(x0)
     
     xa = xf + x
     fun = calc_j(x, *args_j)
