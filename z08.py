@@ -103,6 +103,12 @@ if len(sys.argv) > 6:
         method = "TNC"
     elif method_short == "dog":
         method = "dogleg"
+    elif method_short == "trn":
+        method = "trust-ncg"
+    elif method_short == "trk":
+        method = "trust-krylov"
+    elif method_short == "tre":
+        method = "trust-exact"
     elif method_short[0:3] == "cgf":
         method = "CGF"
         if method_short[4:] == "fr":
@@ -255,26 +261,31 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
             method=method, maxiter=maxiter, save_hist=hist, save_dh=dh, model=model, icycle=icycle)
         u = ua
     elif htype["perturbation"] == "hyvar":
-        ua, pa, chi2 = hyvar.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+        #ua, pa, chi2 = hyvar.analysis(u[:, 1:], u[:, 0], y, rmat, rinv, htype,
+        #    method=method, cgtype=cgtype, 
+        #    maxiter=maxiter, 
+        #    save_hist=hist, save_dh=dh, model=model, icycle=icycle)
+        #u[:, 0] = ua
+        #u[:, 1:] = ua[:, None] + pa
+        u, pa, chi2 = hyvar.analysis(u, np.mean(u,axis=1), y, rmat, rinv, htype,
             method=method, cgtype=cgtype, 
             maxiter=maxiter, 
             save_hist=hist, save_dh=dh, model=model, icycle=icycle)
-        u[:, 0] = ua
-        u[:, 1:] = ua[:, None] + pa
         ds = 0.0
         condh = 0.0
     elif htype["perturbation"] == "envar":
-        spf = u[:, 1:] - u[:, 0].reshape(-1,1)
-        #pf = spf @ spf.T
-        #dpf = np.ones(pf.shape[0])*1e-10
-        #for j in range(len(dpf)):
-        #    if np.diag(pf)[j] > 1e-10:
-        #        dpf[j] = np.diag(pf)[j]
-        #binv = np.diag(1.0/dpf)
-        vl, s, vrt = np.linalg.svd(spf)
-        logger.debug(f"vl shape={vl.shape}")
-        logger.debug(f"s shape={s.shape}")
-        binv = vl[:, :nmem] @ np.diag(1.0/s**2) @ vl[:, :nmem].T
+        #spf = u[:, 1:] - u[:, 0].reshape(-1,1)
+        spf = (u[:, 1:] - np.mean(u, axis=1).reshape(-1,1))/np.sqrt(nmem)
+        pf = spf @ spf.T
+        dpf = np.ones(pf.shape[0])*1e-10
+        for j in range(len(dpf)):
+            if np.diag(pf)[j] > 1e-10:
+                dpf[j] = np.diag(pf)[j]
+        binv = np.diag(1.0/dpf)
+        #vl, s, vrt = np.linalg.svd(spf)
+        #logger.debug(f"vl shape={vl.shape}")
+        #logger.debug(f"s shape={s.shape}")
+        #binv = vl[:, :nmem] @ np.diag(1.0/s**2) @ vl[:, :nmem].T
         for j in range(u.shape[1]):
             ua, chi2 = var.analysis(u[:, j], binv, y, rinv, htype,
                 method=method, cgtype=cgtype, 
@@ -284,7 +295,9 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
         if dh:
             logger.info("save ua")
             np.save("{}_ua_{}_{}_cycle{}.npy".format(model, op, pt, icycle), u)
-        pa = u[:, 1:] - u[:, 0].reshape(-1,1)
+        #pa = u[:, 1:] - u[:, 0].reshape(-1,1)
+        spa = (u[:, 1:] - np.mean(u, axis=1).reshape(-1,1))/np.sqrt(nmem)
+        pa = spa @ spa.T
         ds = 0.0
         condh = 0.0
     else:
@@ -343,14 +356,16 @@ if __name__ == "__main__":
     e = np.zeros(na+1)
     if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
         pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
-        pt == "mlef3" or pt == "mlefh" or pt == "hyvar" or pt == "envar":
+        pt == "mlef3" or pt == "mlefh":
+        # or pt == "hyvar" or pt == "envar":
         e[0] = np.sqrt(np.mean((uf[0, :, 0] - ut[0, :])**2))
     else:
         e[0] = np.sqrt(np.mean((np.mean(uf[0, :, :], axis=1) - ut[0, :])**2))
     dpf = np.zeros(na+1)
     if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
         pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
-        pt == "mlef3" or pt == "mlefh" or pt == "hyvar" or pt == "envar":
+        pt == "mlef3" or pt == "mlefh":
+        # or pt == "hyvar" or pt == "envar":
         pf = u[:, 1:] - u[:, 0].reshape(-1,1)
         dpf[0] = np.sqrt(np.mean(np.diag(pf@pf.T)))
     else:
@@ -390,7 +405,8 @@ if __name__ == "__main__":
         #sqrtpa[i,:,:] = pa
         if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
         pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
-        pt == "mlef3" or pt == "mlefh" or pt == "hyvar" or pt == "envar":
+        pt == "mlef3" or pt == "mlefh":
+        # or pt == "hyvar" or pt == "envar":
             dpa[i] = np.sqrt(np.mean(np.diag(pa@pa.T)))
             ndpa[i] = np.sqrt(np.mean(np.sum(pa@pa.T) - np.sum(np.diag(pa@pa.T))))
         else:
@@ -409,7 +425,8 @@ if __name__ == "__main__":
         #uf[i, :, :] = u
             if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
             pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
-            pt == "mlef3" or pt == "mlefh" or pt == "hyvar" or pt == "envar":
+            pt == "mlef3" or pt == "mlefh": 
+            #or pt == "hyvar" or pt == "envar":
                 pf = u[:, 1:] - u[:, 0].reshape(-1,1)
                 dpf[i+1] =  np.sqrt(np.mean(np.diag(pf@pf.T)))
             else:
@@ -418,7 +435,8 @@ if __name__ == "__main__":
                 #print("xf={}".format(u))
         if pt == "mlef" or pt == "grad" or pt == "mlef08" or pt == "grad08" or \
         pt == "mlef05" or pt == "grad05" or pt == "mlefsc" or pt == "mlefw" or pt == "gradw" or\
-        pt == "mlef3" or pt == "mlefh" or pt == "hyvar" or pt == "envar":
+        pt == "mlef3" or pt == "mlefh":
+        # or pt == "hyvar" or pt == "envar":
             e[i+1] = np.sqrt(np.mean((ua[i, :, 0] - ut[i, :])**2))
         else:
             e[i+1] = np.sqrt(np.mean((np.mean(ua[i, :, :], axis=1) - ut[i, :])**2))

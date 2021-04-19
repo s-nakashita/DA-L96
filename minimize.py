@@ -564,7 +564,9 @@ class Minimize():
                    options={'disp':self.disp, 'maxiter':self.maxiter}, callback=callback)
             logger.info("success={} message={}".format(res.success, res.message))
             logger.info("J={:7.3e} nit={}".format(res.fun, res.nit))
-        elif self.method == "dogleg" or self.method == "Newton-CG":
+        elif self.method == "dogleg" or self.method == "trust-ncg" \
+            or self.method == "trust-krylov" or self.method == "trust-exact" \
+            or self.method == "Newton-CG":
             if self.args is not None:
                 res = spo.minimize(self.func, x0, args=self.args, method=self.method, \
                    jac=self.jac, hess=self.hess, options={'gtol':self.gtol, 'disp':self.disp, 'maxiter':self.maxiter}, callback=callback)

@@ -29,15 +29,19 @@ print(oberrs)
 linecolor={"mlef":"tab:blue","grad":"tab:orange","etkf-fh":"tab:green","etkf-jh":"tab:red",
            "mlefb":"tab:cyan","mleft":"tab:pink"}
 linestyle=["solid","dashed"]
-methods = ["gdf"]
+methods = ["cgf_fr", "cgf_pr", "cgf_prb"]
 #methods = ["lb", "bg", "nm", "pw" ,"gd", "gdf", 
 #"ncg", "tnc", "dog", 
 #"cgf_fr", "cgf_pr", "cgf_prb"]
-#linecolor = {"lb":'tab:blue',"bg":'tab:orange',
-#    "cg":'tab:green',"nm":'tab:red',
-#    "gd":"tab:purple","cgf_fr":"tab:olive",
-#    "cgf_pr":"tab:brown","cgf_prb":"tab:pink"}
+linecolor = {"lb":'tab:blue',"bg":'tab:orange',
+    "cg":'tab:green',"nm":'tab:red',
+    "gd":"tab:purple","cgf_fr":"tab:olive",
+    "cgf_pr":"tab:brown","cgf_prb":"tab:pink"}
 j = 0
+# t-test (two-side, dof=n-1=49)
+t1 = 1.677 #90%
+t2 = 2.01  #95%
+t3 = 2.68  #99%
 #nvar = len(member)
 for method in methods:
     fig = plt.figure(tight_layout=True, figsize=(9,9))
@@ -49,41 +53,67 @@ for method in methods:
     i = 0
     rdata = []
     nrdata = []
-    for oberr in oberrs:
+    print(f"method : {method} , operator : {op}")
+    print(f" oberr | t_value |  90%({t1})  |  95%({t2})  |  99%({t3}) ")
+    #for oberr in oberrs:
+    for sig in obs_s:
+        oberr = str(int(sig*1e5)).zfill(5)
         #for nmem in member:
         er = []#np.zeros(50)
         enr = []#np.zeros(50)
         jr = 0
         jnr = 0
+        dmean = 0.0
+        dstdv = 0.0
+        nsample = 0
         for count in range(1, 51):
                 #f = "cgf_rest_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, pt, oberr, method, count)
                 #f = "lb_rest2_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, pt, oberr, method, count)
                 #f = "lb_rest_nmem/{}_{}_nmem{}_{}_{}.txt".format(op, pt, nmem, method, count)
-            f = "mlef-nd_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[0], oberr, method, count)
+            #f = "mlef-nd_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[0], oberr, method, count)
+            #f = "mlef_oberr/{}_{}_oberr{}_{}.txt".format(op, perts[0], oberr, count)
+            f = "cgf_rest_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[0], oberr, method, count)
             #f = "{}_e_{}_{}_oberr{}.txt".format(model, op, pt, oberr)
             if not os.path.isfile(f):
                 print("not exist {}".format(f))
                 er.append(np.nan)
+                d = 0.0
             else:
                 e = np.loadtxt(f)
                 er.append(np.mean(e[5:]))
+                d = np.mean(e[5:])
             jr += 1
                 
                 #f = "cgf_norest_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, pt, oberr, method, count)
                 #f = "lb_norest_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, pt, oberr, method, count)
                 #f = "lb_nmem/{}_{}_nmem{}_{}_{}.txt".format(op, pt, nmem, method, count)
-            f = "mlef-nd_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[1], oberr, method, count)
+            #f = "mlef-nd_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[1], oberr, method, count)
+            #f = "mlef_oberr/{}_{}_oberr{}_{}.txt".format(op, perts[1], oberr, count)
+            f = "cgf_rest_oberr/{}_{}_oberr{}_{}_{}.txt".format(op, perts[1], oberr, method, count)
             if not os.path.isfile(f):
                 print("not exist {}".format(f))
                 enr.append(np.nan)
+                d -= 0.0
             else:
                 e = np.loadtxt(f)
                 enr.append(np.mean(e[5:]))
+                d -= np.mean(e[5:])
+                nsample += 1
             jnr += 1
+            dmean += d 
+            dstdv += d**2
                 #enrs[i] += np.mean(e[5:])**2
         rdata.append(er)
         nrdata.append(enr)
         i += 1
+        if nsample > 0:
+            dmean /= nsample
+            dstdv = np.sqrt(dstdv/nsample - dmean**2)
+            t_value = np.abs(dmean / dstdv * np.sqrt(nsample))
+        else:
+            t_value = 0.0
+        print("{:5.3e} | {:5.3e} | {} | {} | {}"
+                .format(sig, t_value, t_value>t1, t_value>t2, t_value>t3))
 
     df_r = pd.DataFrame(np.array(rdata).T, columns=obs_s)
         #df_r = pd.DataFrame(np.array(rdata).T, columns=member)
@@ -94,7 +124,7 @@ for method in methods:
     df_nr_melt = pd.melt(df_nr)
     df_nr_melt['setting'] = perts[1]
     df = pd.concat([df_r_melt, df_nr_melt], axis=0)
-    print(df.head())
+    #print(df.head())
         #continue
         #ind = perts.index(pt)
         #ax = fig.add_subplot(gs[ind])
@@ -128,5 +158,5 @@ for method in methods:
 #ax.set_xticks(x[::5])
 #ax.set_xticks(x, minor=True)
     ax.legend()
-    fig.savefig("{}_ebox_{}_{}.png".format(model, op, method))
-    fig.savefig("{}_ebox_{}_{}.pdf".format(model, op, method))
+    fig.savefig("{}_ebox_{}_{}-rest.png".format(model, op, method))
+    fig.savefig("{}_ebox_{}_{}-rest.pdf".format(model, op, method))

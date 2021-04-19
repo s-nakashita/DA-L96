@@ -103,6 +103,12 @@ if len(sys.argv) > 7:
         method = "NCG"
     elif method_short == "tnc":
         method = "TNC"
+    elif method_short == "trn":
+        method = "trust-ncg"
+    elif method_short == "trk":
+        method = "trust-krylov"
+    elif method_short == "tre":
+        method = "trust-exact"
     elif method_short == "dog":
         method = "dogleg"
     elif method_short[0:3] == "cgf":

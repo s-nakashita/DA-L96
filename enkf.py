@@ -32,9 +32,9 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         #    jhi = obs.dhdx(xf[:,i], op, ga)
         #    dy[:,i] = jhi @ dxf[:,i]
     else:
-        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
         #dy = obs.h_operator(y[:,0], xf) - np.mean(obs.h_operator(y[:,0], xf), axis=1)[:, None]
-        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
+        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
     d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     #d = y[:,1] - np.mean(obs.h_operator(y[:,0], xf), axis=1)
     #d = y - obs.h_operator(xf_, op, ga)

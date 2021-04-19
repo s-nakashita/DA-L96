@@ -1,6 +1,6 @@
 #!/bin/sh
 #set -x
-operators="quadratic-nodiff"
+operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
 #operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
 perturbations="mlef grad"
@@ -9,24 +9,25 @@ na=20
 linf="F"
 lloc="F"
 ltlm="F"
-#irest="T"
+irest="F"
 model=z08
 vname="oberr"
-exp="mlef-nd_oberr"
+exp="trust_oberr"
 echo ${exp} ${vname}
 sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001"
 #sigma="0.05"
 #lags="4 6 8 10 12 14 16 18"
 #maxiter="1 5 10 15 20"
 member="4 6 8 10 12 14 16 18 20 30 40"
-#methods="lb bg nm pw gd gdf ncg tnc dog cgf_fr cgf_pr cgf_prb"
-methods="gdf"
+#methods="bg nm pw gd gdf ncg tnc dog"
+#methods="cgf_fr cgf_pr cgf_prb"
+methods="trn trk tre"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
 src=$(pwd)
-#rm -rf ${exp}
-#mkdir ${exp}
+rm -rf ${exp}
+mkdir ${exp}
 cd ${exp}
 cp ${src}/iobs.py .
 cp ${src}/calc_mean.py .
@@ -42,6 +43,7 @@ for obs_s in $sigma ; do
   #obs_s=0.01
 #for lag in $lags ; do
 for method in $methods; do
+  #method=ncg
   #var=
   #var=${lag} 
   var=${obs_s}
