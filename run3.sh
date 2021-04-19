@@ -1,24 +1,24 @@
 #!/bin/sh
 #set -x
-operators="quadratic-nodiff cubic-nodiff quartic-nodiff"
-#operators="linear quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
-#perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
+#operators="linear quadratic cubic quartic"
+operators="quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
+perturbations="mlefw gradw" # po srf letkf"
 #perturbations="mlef08m grad08m mlef05 grad05 mlef08 grad08"
-perturbations="mlef grad"
+#perturbations="mlef grad hyvar envar"
 na=20
 linf="F"
 lloc="F"
 ltlm="F"
-irest="T"
+irest="F"
 model=z08
 #vname="oberr"
-exp="cg-outer-refine2"
+exp="w-trust"
 echo ${exp} ${vname}
 #sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
 #sigma="0.1 0.01 0.001 0.0001"
 #lags="4 6 8 10 12 14 16 18"
 #methods="lb bg cg nm gd cgf_fr cgf_pr cgf_prb"
-methods="lb cgf_fr cgf_pr cgf_prb"
+methods="dog trn trk tre"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
@@ -37,12 +37,12 @@ for op in ${operators}; do
 #for obs_s in $sigma ; do
   #obs_s=0.01
 #for lag in $lags ; do
-#for method in $methods ; do
+for method in $methods ; do
   #var=
   #var=${lag} 
   #var=${obs_s}
-  #var=${method}
-  var=cgf_pr
+  var=${method}
+  #var=cgf_fr
   #ivar=0
   #ivar=${lag} 
   #ivar=$(python iobs.py ${obs_s})
@@ -50,7 +50,6 @@ for op in ${operators}; do
   #exp=${vname}${ivar}
   echo ${exp} ${vname}
   for pert in ${perturbations}; do
-    pt=${pert}
     #if test ${pert} = mlef08m ; then
     #  pt=mlef
     #elif test ${pert} = grad08m ; then
@@ -62,6 +61,7 @@ for op in ${operators}; do
     #elif test "${pert:5:2}" = "fh" ; then
     #  ltlm="F"
     #fi
+    pt=${pert}
     if test ${pt} = mlef ; then
       pt=mlef05
     elif test ${pt} = grad ; then
@@ -78,18 +78,19 @@ for op in ${operators}; do
     tail -1 z08_e_${op}_${pt}_${var}.txt
     #cp z08_e_${op}_${pt}_${vname}${ivar}.txt z08_e_${op}_${pert}_${vname}${ivar}.txt
     #mv z08_e_${op}_${pt}.txt z08_e_${op}_${pert}.txt
+    cp z08_e_${op}_${pt}_${var}.txt z08_e_${op}_${pt}.txt
     mv z08_e_${op}_${pt}_${var}.txt z08_e_${op}_${pert}.txt
-    mv z08_dpa_${op}_${pt}.txt z08_dpa_${op}_${pert}.txt
+    cp z08_dpa_${op}_${pt}.txt z08_dpa_${op}_${pert}.txt
     mv z08_ua_${op}_${pt}.npy z08_ua_${op}_${pert}.npy
     mv z08_uf_${op}_${pt}.npy z08_uf_${op}_${pert}.npy
-    for i in $(seq 0 ${na});do
+    for i in $(seq 0 3);do
       mv z08_gh_${op}_${pt}_cycle${i}.txt z08_gh_${op}_${pert}_cycle${i}.txt
       mv z08_jh_${op}_${pt}_cycle${i}.txt z08_jh_${op}_${pert}_cycle${i}.txt
       mv z08_alpha_${op}_${pt}_cycle${i}.txt z08_alpha_${op}_${pert}_cycle${i}.txt
-#      mv z08_d_${op}_${pt}_cycle${i}.npy z08_d_${op}_${pert}_cycle${i}.npy
-#      mv z08_dh_${op}_${pt}_cycle${i}.npy z08_dh_${op}_${pert}_cycle${i}.npy
-#      mv z08_dxf_${op}_${pt}_cycle${i}.npy z08_dxf_${op}_${pert}_cycle${i}.npy
-#      mv z08_K_${op}_${pt}_cycle${i}.npy z08_K_${op}_${pert}_cycle${i}.npy
+      mv z08_d_${op}_${pt}_cycle${i}.npy z08_d_${op}_${pert}_cycle${i}.npy
+      mv z08_dh_${op}_${pt}_cycle${i}.npy z08_dh_${op}_${pert}_cycle${i}.npy
+      mv z08_dxf_${op}_${pt}_cycle${i}.npy z08_dxf_${op}_${pert}_cycle${i}.npy
+      mv z08_K_${op}_${pt}_cycle${i}.npy z08_K_${op}_${pert}_cycle${i}.npy
 #      mv z08_Kloc_${op}_${pt}_cycle${i}.npy z08_Kloc_${op}_${pert}_cycle${i}.npy
       mv z08_ua_${op}_${pt}_cycle${i}.npy z08_ua_${op}_${pert}_cycle${i}.npy
 #      #mv z08_x+g_${op}_${pt}_cycle${i}.npy z08_x+g_${op}_${pert}_cycle${i}.npy
@@ -132,10 +133,14 @@ for op in ${operators}; do
   #  convert -delay 10 z08_ua_${op}_${pt}_cycle*.png z08_ua_${op}_${pt}.gif
   #done
   python ${src}/plote.py ${op} z08 ${na}
-  python ${src}/plottrpa.py ${op} z08 ${na}
+#  python ${src}/plottrpa.py ${op} z08 ${na}
+  mv z08_e_${op}.png z08_e_${op}_${var}.png
+  mv z08_e_${op}.pdf z08_e_${op}_${var}.pdf
+  mv z08_elog_${op}.png z08_elog_${op}_${var}.png
+  mv z08_elog_${op}.pdf z08_elog_${op}_${var}.pdf
 #  python ${src}/plotua.py ${op} z08 ${na}
 #  python ${src}/plotk.py ${op} z08 ${na}
-  python ${src}/plotgh.py ${op} z08 ${na}
+#  python ${src}/plotjh.py ${op} z08 ${na}
 #  for i in $(seq 0 3); do
 #    mv z08_gh_${op}_cycle${i}.png z08_gh_${op}_cycle${i}_${var}.png
 #  done
@@ -182,7 +187,7 @@ for op in ${operators}; do
 #done
 #python plottrpf.py ${op} ${model} ${na}
 #mv ${model}_trpf_${op}.png ${model}_trpf_${op}_${exp}.png
-#done # for obs_s
+done # for obs_s
 #for pt in ${perturbations}; do
 #python ../plotemethod.py ${op} z08 ${na} #${pt}
 #done

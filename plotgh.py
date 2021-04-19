@@ -40,9 +40,9 @@ for i in range(4):
     elif len(x) > 100:
         ax00.set_xticks(x[::50])
         ax00.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax00.set_xticks(x[::20])
-        ax00.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax00.set_xticks(x[::20])
+    #    ax00.set_xticks(x[::5], minor=True)
     else:
         ax00.set_xticks(x[::5])
         ax00.set_xticks(x, minor=True)
@@ -66,9 +66,9 @@ for i in range(4):
     elif len(x) > 100:
         ax10.set_xticks(x[::50])
         ax10.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax10.set_xticks(x[::20])
-        ax10.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax10.set_xticks(x[::20])
+    #    ax10.set_xticks(x[::5], minor=True)
     else:
         ax10.set_xticks(x[::5])
         ax10.set_xticks(x, minor=True)
@@ -88,9 +88,9 @@ for i in range(4):
     elif len(x) > 100:
         ax20.set_xticks(x[::50])
         ax20.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax20.set_xticks(x[::20])
-        ax20.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax20.set_xticks(x[::20])
+    #    ax20.set_xticks(x[::5], minor=True)
     else:
         ax20.set_xticks(x[::5])
         ax20.set_xticks(x, minor=True)
@@ -115,9 +115,9 @@ for i in range(4):
     elif len(x) > 100:
         ax01.set_xticks(x[::50])
         ax01.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax01.set_xticks(x[::20])
-        ax01.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax01.set_xticks(x[::20])
+    #    ax01.set_xticks(x[::5], minor=True)
     else:
         ax01.set_xticks(x[::5])
         ax01.set_xticks(x, minor=True)
@@ -141,9 +141,9 @@ for i in range(4):
     elif len(x) > 100:
         ax11.set_xticks(x[::50])
         ax11.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax11.set_xticks(x[::20])
-        ax11.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax11.set_xticks(x[::20])
+    #    ax11.set_xticks(x[::5], minor=True)
     else:
         ax11.set_xticks(x[::5])
         ax11.set_xticks(x, minor=True)
@@ -163,9 +163,9 @@ for i in range(4):
     elif len(x) > 100:
         ax21.set_xticks(x[::50])
         ax21.set_xticks(x[::10], minor=True)
-    elif len(x) > 100:
-        ax21.set_xticks(x[::20])
-        ax21.set_xticks(x[::5], minor=True)
+    #elif len(x) > 100:
+    #    ax21.set_xticks(x[::20])
+    #    ax21.set_xticks(x[::5], minor=True)
     else:
         ax21.set_xticks(x[::5])
         ax21.set_xticks(x, minor=True)

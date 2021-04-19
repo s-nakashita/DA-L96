@@ -5,6 +5,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+from matplotlib.gridspec import GridSpec
 
 op = sys.argv[1]
 model = sys.argv[2]
@@ -13,7 +14,7 @@ na = int(sys.argv[3])
 #oberr = str(int(obs_s*1e4)).zfill(4)
 if model == "z08" or model == "z05":
     nx = 81
-    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]
+    perts = ["etkf-jh", "etkf-fh_av-op", "etkf-fh_op-av"]
     #na = 20
 elif model == "l96":
     nx = 40
@@ -24,34 +25,53 @@ x = np.arange(nx+1)
 lx = np.arange(21) + 1
 cmap = "coolwarm"
 #plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
-fig, ax = plt.subplots(2,2)
-pt = perts[0]
+fig = plt.figure(constrained_layout=True)
+gs = GridSpec(3, 3, figure=fig)
+ax0 = fig.add_subplot(gs[:,0])
+#pt = perts[0]
+ii = 0
+width = 0.25
+mode = np.arange(1, 6) - width
+for pt in perts:
 #f = "{}_dy_{}_{}_cycle{}_oberr{}.npy".format(model, op, pt, 0, oberr)
-f = "{}_dy_{}_{}_cycle{}.npy".format(model, op, pt, 0)
-if not os.path.isfile(f):
-    print("not exist {}".format(f))
-    sys.exit()
-dy = np.load(f)
-u, sj, vt = la.svd(dy)
-print(u.shape)
-y = np.arange(u.shape[0])
-ax[0,1].plot(y,dy)
-ax[0,1].set_xticks(y[::10])
-ax[0,1].set_title(pt + " dY")
-nmode = sj.size
-mode = np.arange(nmode)
-for i in range(nmode):
-    ax[0,0].plot(y,u[:,i],linestyle='solid')
-#ax[0,0].set_xticks(x[::10])
-#ax[0,0].set_yticks(y[::10])
-#ax[0,0].set_ylabel("observation point")
-#ax[0,0].set_xlabel("mode")
-#ax[0,0].invert_yaxis()
-ax[0,0].set_title(pt+" left singular vectors")
-#ax[1,0].bar(mode,s,width=0.35)
-#ax[1,0].set_xlabel("mode")
-#ax[1,0].set_title(pt+" singular values")
-
+    f = "{}_dh_{}_{}_cycle{}.npy".format(model, op, pt, 0)
+    if not os.path.isfile(f):
+        print("not exist {}".format(f))
+        sys.exit()
+    dy = np.load(f)
+    u, sj, vt = la.svd(dy)
+    print(u.shape)
+    y = np.arange(u.shape[0])
+    #ax[0,1].plot(y,dy)
+    #ax[0,1].set_xticks(y[::10])
+    #ax[0,1].set_title(pt + " dY")
+    nmode = sj.size
+    ax1 = fig.add_subplot(gs[ii,1])
+    ax2 = fig.add_subplot(gs[ii,2])
+    #mode = np.arange(nmode)
+    for i in range(nmode):
+        ax1.plot(y[:20],u[:20,i],linestyle='solid')
+        ax2.plot(np.arange(nmode),vt[i,:])
+    #ax[0,0].set_xticks(x[::10])
+    #ax[0,0].set_yticks(y[::10])
+    #ax[0,0].set_ylabel("observation point")
+    #ax[0,0].set_xlabel("mode")
+    #ax[0,0].invert_yaxis()
+    ax1.set_title(pt+" left")
+    ax2.set_title(pt+" right")
+    ax0.bar(mode,sj,width=width, label=pt)
+    ii += 1
+    mode = mode + width
+    #ax[1,0].set_xlabel("mode")
+    #ax[1,0].set_title(pt+" singular values")
+ax0.set_title("singular values")
+ax0.set_xticks(np.arange(1, 6))
+ax0.set_yscale("log")
+ax0.legend(bbox_to_anchor=(0.0,1.1), loc='lower left')
+#fig.tight_layout()
+#fig.savefig("{}_dy_{}_oberr{}.png".format(model,op,oberr))
+fig.savefig("{}_dy_{}.png".format(model,op))
+"""
 pt = perts[1]
 #f = "{}_dy_{}_{}_cycle{}_oberr{}.npy".format(model, op, pt, 0, oberr)
 f = "{}_dy_{}_{}_cycle{}.npy".format(model, op, pt, 0)
@@ -155,6 +175,7 @@ ax[1,0].set_title("singular values")
 fig.tight_layout()
 #fig.savefig("{}_dy_{}_oberr{}.png".format(model,op,oberr))
 fig.savefig("{}_dy_{}_etkf.png".format(model,op))
+"""
 """
 diff = diff - u
 fig, ax = plt.subplots()

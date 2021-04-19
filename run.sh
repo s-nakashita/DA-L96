@@ -1,10 +1,10 @@
 #!/bin/sh
 #set -x
-#operators="quadratic cubic"
-operators="quadratic-nodiff cubic-nodiff quartic-nodiff"
+operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
+#operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
 perturbations="mlef grad"
-#perturbations="mlef grad etkf-fh etkf-jh"
+#perturbations="etkf-fh" # etkf-jh"
 na=20
 linf="F"
 lloc="F"
@@ -12,13 +12,16 @@ ltlm="F"
 irest="F"
 model=z08
 vname="oberr"
-exp="lb_norest_oberr"
+exp="trust_oberr"
 echo ${exp} ${vname}
 sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001"
-#sigma="0.005"
+#sigma="0.05"
 #lags="4 6 8 10 12 14 16 18"
 #maxiter="1 5 10 15 20"
-methods="lb"
+member="4 6 8 10 12 14 16 18 20 30 40"
+#methods="bg nm pw gd gdf ncg tnc dog"
+#methods="cgf_fr cgf_pr cgf_prb"
+methods="trn trk tre"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
@@ -35,13 +38,16 @@ cp ${src}/logging_config.ini .
 for op in ${operators}; do
   #./clean.sh  z08 ${op}
 for obs_s in $sigma ; do
+#for nmem in $member ; do
 #for mi in ${maxiter} ; do
   #obs_s=0.01
 #for lag in $lags ; do
 for method in $methods; do
+  #method=ncg
   #var=
   #var=${lag} 
   var=${obs_s}
+  #var=${nmem}
   #var=${mi}
   #ivar=0
   #ivar=${lag} 
@@ -51,13 +57,13 @@ for method in $methods; do
   echo ${exp} ${vname}
   for count in $(seq 1 50); do
     for pert in ${perturbations}; do
-    pt=${pert}
     #pt=${pert:0:4}
     #if test "${pert:5:2}" = "jh" ; then
     #  ltlm="T"
     #elif test "${pert:5:2}" = "fh" ; then
     #  ltlm="F"
     #fi
+    pt=${pert}
     if test ${pt} = mlef ; then
       pt=mlef05
     elif test ${pt} = grad ; then
@@ -81,8 +87,9 @@ for method in $methods; do
     #mv z08_Kloc_${op}_${pt}_cycle0.npy z08_Kloc_${op}_${pert}_cycle0_${exp}.npy 
     #mv z08_e_${op}_${pt}.txt e${ivar}_${count}.txt
     #mv z08_chi_${op}_${pt}.txt chi${ivar}_${count}.txt
-    #mv z08_e_${op}_${pt}_${vname}${ivar}.txt ${vname}${ivar}_${count}.txt
+    #mv z08_e_${op}_${pt}_${vname}${ivar}.txt ${op}_${pert}_${vname}${ivar}_${count}.txt
     mv z08_e_${op}_${pt}_${vname}${ivar}_${method}.txt ${op}_${pert}_${vname}${ivar}_${method}_${count}.txt
+    #mv z08_ua_${op}_${pt}_cycle0.npy ua_${op}_${pert}_cycle0_${count}.npy
     done # for perturbation    
     rm obs*.npy
   done # for count
@@ -99,7 +106,7 @@ for method in $methods; do
     #rm chi${ivar}_*.txt
     #./output.sh ${exp} z08 ${op} ${pt} ${pert}
 done # for method
-  rm obs*.npy
+#  rm obs*.npy
   #python plotcJb+o.py ${op} z08 ${na}
   #for i in $(seq 0 3); do
   #  mv z08_cJb_${op}_cycle${i}.png z08_cJb_${op}_cycle${i}_${exp}${ivar}.png

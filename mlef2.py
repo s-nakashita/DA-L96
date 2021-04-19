@@ -87,7 +87,7 @@ def minimize_newton(fun, w0, args=(), jac=None, hess=None, callback=None,
                                     'bounds.'}
     w0 = np.asarray(w0).flatten()
     if maxiter is None:
-        maxiter = len(w0) * 200
+        maxiter = 100
     
     old_fval = fun(w0, *args)
     gfk = jac(w0, *args)
@@ -122,9 +122,9 @@ def minimize_newton(fun, w0, args=(), jac=None, hess=None, callback=None,
         pk = pcg(gfk, Hk, Mk, delta=delta, eps=eps)
         rk = Hk @ pk + gfk
         logger.debug(f"residual:{np.sqrt(np.dot(rk, rk))}")
-        #alphak = back_tracking(fun, wk, pk, gfk, old_fval, nfev, args,
-        #                       c1, c2)
-        alphak = 1.0
+        alphak = back_tracking(fun, wk, pk, gfk, old_fval, nfev, args,
+                               c1, c2)
+        #alphak = 1.0
         wkp1 = wk + alphak * pk
         gfkp1 = jac(wkp1, *args)
         gfk = gfkp1
@@ -197,19 +197,20 @@ def pcg(g, H, M, delta=1e-10, eps=None, maxiter=30):
 
 def back_tracking(fun, wk, pk, gfk, old_fval, nfev, args, c1, c2):
     alpha0 = 1.0
-    while (alpha0 > 1e-3):
+    while (alpha0 > 0.5):
         wtrial = wk + alpha0 * pk
         ftrial = fun(wtrial, *args)
         nfev += 1
         if (ftrial - old_fval <= c1*alpha0*np.dot(gfk, pk)) \
             and (ftrial - old_fval >= c2*alpha0*np.dot(gfk, pk)):
             break
-        alpha0 *= 0.5
+        alpha0 *= 0.9
     return alpha0
 
 
-def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
-       maxiter=None, disp=False, save_hist=False, save_dh=False, 
+def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="CG", cgtype=None,
+       maxiter=None, restart=True, maxrest=20, 
+       disp=False, save_hist=False, save_dh=False, 
        infl=False, loc = False, infl_parm=1.0, model="z08", icycle=0):
     global wk, alphak
     wk = []
@@ -230,13 +231,17 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
         dh = obs.h_operator(xf, op) - obs.h_operator(xc, op)[:, None]
     if save_dh:
         np.save("{}_dh_{}_{}.npy".format(model, op, pt), dh)
-    logger.info("save_dh={}".format(save_dh))
+    #logger.info("save_dh={}".format(save_dh))
+    zmat = rmat @ dh
+#    logger.debug("cond(zmat)={}".format(la.cond(zmat)))
+    tmat, heinv, prec = precondition(zmat)
 #    print("save_dh={}".format(save_dh))
     x0 = np.zeros(xf.shape[1])
     args_j = (xc, pf, y, rmat, htype)
-    #iprint = np.zeros(2, dtype=np.int32)
-    #minimize = Minimize(x0.size, 7, calc_j, calc_grad_j, 
-    #                    args_j, iprint, method)
+    iprint = np.zeros(2, dtype=np.int32)
+    minimize = Minimize(x0.size, calc_j, jac=calc_grad_j, hess=calc_hess, prec=prec,
+                        args=args_j, iprint=iprint, method=method, cgtype=cgtype,
+                        maxiter=maxiter, restart=restart)
     logger.info("save_hist={}".format(save_hist))
     cg = spo.check_grad(calc_j, calc_grad_j, x0, *args_j)
     logger.info("check_grad={}".format(cg))
@@ -244,9 +249,9 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
     if save_hist:
         #g = calc_grad_j(x0, *args_j)
         #print("g={}".format(g))
-        #x = minimize(x0, callback=callback)
-        x = minimize_newton(calc_j, x0, args=args_j, jac=calc_grad_j, hess=calc_hess,
-                            callback=callback, maxiter=maxiter, disp=disp)
+        x, flg = minimize(x0, callback=callback)
+        #x = minimize_newton(calc_j, x0, args=args_j, jac=calc_grad_j, hess=calc_hess,
+        #                    callback=callback, maxiter=maxiter, disp=disp)
         logger.debug(f"wk={len(wk)} alpha={len(alphak)}")
 
         jh = np.zeros(len(wk))
@@ -272,9 +277,9 @@ def analysis(xf, xc, y, rmat, rinv, htype, gtol=1e-6, method="LBFGS",
         elif model=="l96":
             cost_j(200, xf.shape[1], model, x, icycle, *args_j)
     else:
-        #x = minimize(x0)
-        x = minimize_newton(calc_j, x0, args=args_j, jac=calc_grad_j, hess=calc_hess,
-                            maxiter=maxiter, disp=disp)
+        x, flg = minimize(x0)
+        #x = minimize_newton(calc_j, x0, args=args_j, jac=calc_grad_j, hess=calc_hess,
+        #                    maxiter=maxiter, disp=disp)
     xa = xc + pf @ x
     
     if pt == "gradw":

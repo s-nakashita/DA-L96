@@ -14,10 +14,21 @@ if model == "l96" and op == "linear":
     #na = 100
 elif model == "z08":
     nx = 81
-    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
-    linestyle = {"mlef":"solid", "grad":"dashed",
-     "etkf-fh":"solid", "etkf-jh":"dashed"}
-    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+#    perts = ["mlef", "grad", "mlefw", "gradw", "etkf-fh", "etkf-jh"]#, "po", "srf", "letkf"]
+#    linestyle = {"mlef":"solid", "grad":"dashed",
+#     "etkf-fh":"solid", "etkf-jh":"dashed",
+#     "mlefw":"solid", "gradw":"dashed"}
+#    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',"etkf-fh":'tab:green',"etkf-jh":'tab:red',
+#     "mlefw":'tab:blue',"gradw":'tab:orange'}
+    perts = ["mlef", "grad", "etkf", "po", "srf", "letkf", "hyvar", "envar"]
+    linestyle = {"mlef":"solid", "grad":"dashed", \
+        "etkf":"solid", "po":'solid',\
+        "srf":"solid", "letkf":"solid",\
+        "hyvar":"solid", "envar":"solid"}
+    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',\
+        "etkf":'tab:green', "po":'tab:red',\
+        "srf":"tab:pink", "letkf":"tab:purple",\
+        "hyvar":"tab:olive", "envar":"tab:cyan"}
 x = np.arange(na) + 1
 y = np.ones(x.shape)
 #fig, ax = plt.subplots(2)
@@ -100,6 +111,6 @@ plt.rcParams['legend.fontsize'] = 16 # fontsize arrange
 ax1.legend()
 ax2.legend()
 #ax1.legend()
-#fig.tight_layout()
+fig.tight_layout()
 fig.savefig("{}_trpa_{}.png".format(model, op))
 fig.savefig("{}_trpa_{}.pdf".format(model, op))

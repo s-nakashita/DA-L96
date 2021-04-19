@@ -8,7 +8,7 @@ model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
-    #perts = ["mlef08m", "grad08m", "mlef08", "grad08", "mlef05", "grad05"]
+#    #perts = ["mlef08m", "grad08m", "mlef08", "grad08", "mlef05", "grad05"]
     perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "gradw"]
     linestyle = {"mlef":"solid", "grad":"dashed",
      "mlef08m":"solid", "grad08m":"dashed",
@@ -27,13 +27,15 @@ if model == "z08" or model == "z05":
     "mlefw":"tab:blue", "gradw":"tab:orange", 
     "mlefh":"tab:gray",
     "etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
-#    perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-#    linestyle = {"mlef":"solid", "grad":"solid", \
+#    perts = ["mlef", "grad", "etkf", "po", "srf", "letkf", "hyvar", "envar"]
+#    linestyle = {"mlef":"solid", "grad":"dashed", \
 #        "etkf":"solid", "po":'solid',\
-#        "srf":"solid", "letkf":"solid"}
-#    linecolor = {"mlef":'tab:blue',"grad":'tab:blue',\
+#        "srf":"solid", "letkf":"solid", \
+#        "hyvar":"solid", "envar":"solid"}
+#    linecolor = {"mlef":'tab:blue',"grad":'tab:orange',\
 #        "etkf":'tab:green', "po":'tab:red',\
-#        "srf":"tab:pink", "letkf":"tab:purple"}
+#        "srf":"tab:pink", "letkf":"tab:purple",\
+#        "hyvar":"tab:olive", "envar":"tab:cyan"}
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}

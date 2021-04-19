@@ -31,6 +31,11 @@ def h_operator(x, operator="linear", gamma=1):
             return np.array([s])
         else:
             return s.reshape(1,-1)
+    elif operator == "u":
+        if x.ndim == 1:
+            return np.array([x[0]])
+        else:
+            return x[0].reshape(1,-1)
     elif operator == "abs":
         return np.abs(x)
         
@@ -57,6 +62,8 @@ def dhdx(x, operator="linear", gamma=1):
     elif operator == "speed":
         s = np.sqrt(x[0]**2 + x[1]**2)
         return x.reshape(1,-1)/s
+    elif operator == "u":
+        return np.array([1.0,0.0]).reshape(1,-1)
     elif operator == "abs":
         return np.diag(x/np.abs(x))
 

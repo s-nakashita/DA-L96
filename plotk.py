@@ -10,7 +10,7 @@ model = sys.argv[2]
 na = int(sys.argv[3])
 if model == "z08" or model == "z05":
     nx = 81
-    perts = ["etkf-jh", "etkf-fh"]
+    perts = ["etkf-jh", "etkf-fh_av-op", "etkf-fh_op-av"]
     #na = 20
 elif model == "l96":
     nx = 40
@@ -21,6 +21,7 @@ cmap = "coolwarm"
 #plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
 for pt in perts:
     for i in range(4):
+        plt.rcParams['axes.titlesize'] = 16 # fontsize arrange
         plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
         fig, ax = plt.subplots()
     #fig, ax = plt.subplots(2,2)
@@ -41,8 +42,8 @@ for pt in perts:
         ax.set_xlabel("observation point")
         ax.set_title(f"{op} cycle{i}")
         pp = fig.colorbar(mappable0, ax=ax, orientation="vertical")
-        fig.savefig("{}_kb_{}_{}_cycle{}.png".format(model,op,pt,i))
-        fig.savefig("{}_kb_{}_{}_cycle{}.pdf".format(model,op,pt,i))
+        fig.savefig("{}_k_{}_{}_cycle{}.png".format(model,op,pt,i))
+        fig.savefig("{}_k_{}_{}_cycle{}.pdf".format(model,op,pt,i))
         plt.close()   
     
         fig, ax = plt.subplots()
