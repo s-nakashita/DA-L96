@@ -66,14 +66,15 @@ if len(sys.argv) > 6:
     if sys.argv[6] == "F":
         ltlm = False
 maxiter = None
-#if len(sys.argv) > 7:
-#    #htype["gamma"] = int(sys.argv[7])
-#    maxiter = int(sys.argv[6])
-method = "BFGS"
-method_short = "bg"
-cgtype = None
 if len(sys.argv) > 7:
-    method_short = sys.argv[7]
+    #htype["gamma"] = int(sys.argv[7])
+    #maxiter = int(sys.argv[6])
+    nt = int(sys.argv[7])
+method = "CGF"
+method_short = "cgf_fr"
+cgtype = 1
+if len(sys.argv) > 8:
+    method_short = sys.argv[8]
     if method_short == "bg":
         method = "BFGS"
     elif method_short == "cg":
@@ -100,10 +101,10 @@ if len(sys.argv) > 7:
             cgtype = 3
 restart = False
 maxrest = 20 # outer-loop iteration
-if len(sys.argv) > 8:
-    if sys.argv[8] == "T":
+if len(sys.argv) > 9:
+    if sys.argv[9] == "T":
         restart = True
-    elif sys.argv[8] == "F":
+    elif sys.argv[9] == "F":
         restart = False
 logger.info("nmem={} t0f={}".format(nmem, t0f))
 #print("nmem={} t0f={}".format(nmem, t0f))
@@ -276,7 +277,7 @@ if __name__ == "__main__":
 
     xt, obs = get_true_and_obs(namax, nx, sigma[op], op, ga)
     logger.info("obs.shape={}".format(obs.shape))
-    np.save("{}_ut.npy".format(model), xt[:na,:])
+    #np.save("{}_ut.npy".format(model), xt[:na,:])
     x0 = init_ens(nx,nmem,t0c,t0f,dt,F,pt,opt=0)
     if pt == "mlef" or pt == "grad" or pt == "mlef05" or pt == "grad05" or pt == "mlefw" or pt == "mlef3":
         x0c = x0[:, 0]
@@ -304,15 +305,15 @@ if __name__ == "__main__":
         y = obs[i]
         logger.debug("obs={}".format(y))
         logger.info("cycle{} analysis".format(i))
-        if i in range(0,4):
-            u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
-                method=method, cgtype=cgtype, \
-                maxiter=maxiter, restart=restart, maxrest=maxrest, \
-                hist=True, dh=True, \
-                infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
-                model=model, icycle=i)
-        else:
-            u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
+        #if i in range(0,4):
+        #    u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
+        #        method=method, cgtype=cgtype, \
+        #        maxiter=maxiter, restart=restart, maxrest=maxrest, \
+        #        hist=True, dh=True, \
+        #        infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
+        #        model=model, icycle=i)
+        #else:
+        u, pa, chi2, ds = analysis(u, y, rmat, rinv, sigma[op], htype, \
                 method=method, cgtype=cgtype, \
                 maxiter=maxiter, restart=restart, maxrest=maxrest, \
                 infl=linf, loc=lloc, tlm=ltlm, infl_parm = infl_parm, \
@@ -327,14 +328,14 @@ if __name__ == "__main__":
             e[i] = np.sqrt(np.mean((xa[i, :, 0] - xt[i, :])**2))
         else:
             e[i] = np.sqrt(np.mean((np.mean(xa[i, :, :], axis=1) - xt[i, :])**2))
-    np.save("{}_ua_{}_{}.npy".format(model, op, pt), xa)
-    np.save("{}_uf_{}_{}.npy".format(model, op, pt), xf)
-    np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
-    #if len(sys.argv) > 7:
-    #    #np.savetxt("{}_e_{}_{}_ga{}.txt".format(model, op, pt, ga), e)
-    #    #np.savetxt("{}_chi_{}_{}_ga{}.txt".format(model, op, pt, ga), chi)
+    #np.save("{}_ua_{}_{}.npy".format(model, op, pt), xa)
+    #np.save("{}_uf_{}_{}.npy".format(model, op, pt), xf)
+    #np.save("{}_pa_{}_{}.npy".format(model, op, pt), sqrtpa)
+    if len(sys.argv) > 7:
+        np.savetxt("{}_e_{}_{}_nt{}.txt".format(model, op, pt, nt), e)
+        #np.savetxt("{}_chi_{}_{}_nt{}.txt".format(model, op, pt, nt), chi)
     #    np.savetxt("{}_e_{}_{}_{}.txt".format(model, op, pt, method_short), e)
     #    np.savetxt("{}_chi_{}_{}_{}.txt".format(model, op, pt, method_short), chi)
-    #else:
-    np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
-    np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)
+    else:
+        np.savetxt("{}_e_{}_{}.txt".format(model, op, pt), e)
+        np.savetxt("{}_chi_{}_{}.txt".format(model, op, pt), chi)

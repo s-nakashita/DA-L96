@@ -32,9 +32,9 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         #    jhi = obs.dhdx(xf[:,i], op, ga)
         #    dy[:,i] = jhi @ dxf[:,i]
     else:
-        #dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
+        dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
         #dy = obs.h_operator(y[:,0], xf) - np.mean(obs.h_operator(y[:,0], xf), axis=1)[:, None]
-        dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
+        #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
     d = y - np.mean(obs.h_operator(xf, op, ga), axis=1)
     #d = y[:,1] - np.mean(obs.h_operator(y[:,0], xf), axis=1)
     #d = y - obs.h_operator(xf_, op, ga)
@@ -42,16 +42,6 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
     hes = np.eye(nmem) + dy.T @ rinv @ dy
     condh = la.cond(hes)
     # inflation parameter
-    """
-    if op == "linear" or op == "test":
-        alpha = 1.2
-    elif op == "quadratic" or op == "quadratic-nodiff":
-        #alpha = 1.35
-        alpha = 1.2
-    elif op == "cubic" or op == "cubic-nodiff":
-        #alpha = 1.65
-        alpha = 1.2
-    """
     alpha = infl_parm
     if infl:
         if da != "letkf" and da != "etkf":
@@ -143,7 +133,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
 
         dxa = dxf @ T
         xa = dxa + xa_[:,None]
-        pa = dxa@dxa.T/(nmem-1)
+    #    pa = dxa@dxa.T/(nmem-1)
 
     elif da=="po":
         Y = np.zeros((y.size,nmem))
@@ -174,12 +164,13 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
         xa_ = xf_ + K @ d_
         if tlm:
             xa = xf + K @ (Y - JH @ xf)
-            pa = (np.eye(xf_.size) - K @ JH) @ pf
+        #    pa = (np.eye(xf_.size) - K @ JH) @ pf
         else:
             HX = obs.h_operator(xf, op, ga)
             #HX = obs.h_operator(y[:,0], xf)
             xa = xf + K @ (Y - HX)
-            pa = pf - K @ dy @ dxf.T / (nmem-1)
+        #    pa = pf - K @ dy @ dxf.T / (nmem-1)
+        dxa = xa - xa_[:, None]
 
     elif da=="srf":
         I = np.eye(xf_.size)
@@ -216,21 +207,21 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             x0_ = xa_[:]
             dx0 = dxa[:,:]
             x0 = x0_ + dx0
-            if tlm:
-                logger.debug(x0_.shape)
-                logger.debug(obs.dhdx(np.squeeze(x0_), op, ga).shape)
-                logger.debug(dx0.shape)
-                dy0 = obs.dhdx(np.squeeze(x0_), op, ga) @ dx0
-                #dy0 = obs.dh_operator(y[:,0], x0_) @ dx0
-                #dy0 = np.zeros((y.size,nmem))
-                #for i in range(nmem):
-                #    jhi = obs.dhdx(x0[:,i], op, ga)
-                #    dy0[:,i] = jhi @ dx0[:,i]
-            else:
-                dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-                #dy0 = obs.h_operator(y[:,0], x0) - np.mean(obs.h_operator(y[:,0], x0), axis=1)[:, None]
-                #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
-            d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
+            #if tlm:
+            #    logger.debug(x0_.shape)
+            #    logger.debug(obs.dhdx(np.squeeze(x0_), op, ga).shape)
+            #    logger.debug(dx0.shape)
+            #    dy0 = obs.dhdx(np.squeeze(x0_), op, ga) @ dx0
+            #    #dy0 = obs.dh_operator(y[:,0], x0_) @ dx0
+            #    #dy0 = np.zeros((y.size,nmem))
+            #    #for i in range(nmem):
+            #    #    jhi = obs.dhdx(x0[:,i], op, ga)
+            #    #    dy0[:,i] = jhi @ dx0[:,i]
+            #else:
+            #    dy0 = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
+            #    #dy0 = obs.h_operator(y[:,0], x0) - np.mean(obs.h_operator(y[:,0], x0), axis=1)[:, None]
+            #    #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
+            #d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
             #d0 = y[:,1] - np.mean(obs.h_operator(y[:,0], x0), axis=1)
             #d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
             #p0 = pa[:,:]
@@ -239,7 +230,7 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             #print(dy0.shape)
             #print(d0.shape)
             #print(p0.shape)
-        pa = dxa@dxa.T/(nmem-1)
+        #pa = dxa@dxa.T/(nmem-1)
         xa = dxa + xa_
         xa_ = np.squeeze(xa_)
 
@@ -298,7 +289,8 @@ def analysis(xf, xf_, y, sig, dx, htype, infl=False, loc=False, tlm=True, infl_p
             sqrtPa = v @ np.sqrt(D_inv) @ v.T * np.sqrt(nmem-1)
             dxa[i] = dxf[i] @ sqrtPa
             xa[i] = np.full(nmem,xa_[i]) + dxa[i]
-        pa = dxa@dxa.T/(nmem-1)
+        #pa = dxa@dxa.T/(nmem-1)
+    pa = dxa@dxa.T/(nmem-1)
     if save_dh:
         #logger.info("save pa")
         np.save("{}_pa_{}_{}_cycle{}.npy".format(model, op, da, icycle), pa)

@@ -13,6 +13,7 @@ logger = logging.getLogger('anl')
 
 def analysis(xf, xf_, y, ytype, sig, dx, htype, \
     infl=False, loc=False, tlm=True, infl_parm=1.1, \
+    infl_r=False, l_jhi=False,\
     save_dh=False, model="z08", icycle=0):
     #op = htype["operator"]
     da = htype["perturbation"]
@@ -24,6 +25,7 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
     for i in range(len(ytype)):
         op = ytype[i]
         JH[i, :] = obs.dhdx(xf_, op, ga)
+    logger.debug(f"JH {JH}")
     R = np.eye(y.size)*sig*sig
     rinv = np.eye(y.size)/sig/sig
     #R, rmat, rinv = obs.set_r(y.shape[0])
@@ -31,21 +33,32 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
     dxf = xf - xf_[:,None]
     logger.debug(dxf.shape)
     dy = np.zeros((y.size,nmem))
+    dyj = np.zeros((nmem,y.size,nmem))
+    xa = np.zeros_like(xf)
+    dxa = np.zeros_like(dxf)
     if tlm:
         for i in range(len(ytype)):
             op = ytype[i]
-            #dy[i, :] = obs.dhdx(xf_, op) @ dxf
-            for j in range(nmem):
-                jhi = obs.dhdx(xf[:,j], op, ga)
-                dy[i, j] = jhi @ dxf[:,j]
+            logger.debug(op)
+            if not l_jhi:
+                logger.debug("linearized about ensemble mean")
+                dy[i, :] = obs.dhdx(xf_, op) @ dxf
+            else:
+                logger.debug("linearized about each ensemble member")
+                for j in range(nmem):
+                    jhi = obs.dhdx(xf[:,j], op, ga)
+                    dyj[j, i, :] = jhi @ dxf
+                dy[i, :] = obs.dhdx(xf_, op) @ dxf
     else:
         for i in range(len(ytype)):
             op = ytype[i]
+            logger.debug(op)
             dy[i, :] = obs.h_operator(xf, op) - np.mean(obs.h_operator(xf, op), axis=1)[:, None]
             #dy[i, :] = obs.h_operator(xf, op) - obs.h_operator(xf_, op)[:, None]
         ##dy = obs.h_operator(xf, op, ga) - np.mean(obs.h_operator(xf, op, ga), axis=1)[:, None]
         ##dy = obs.h_operator(y[:,0], xf) - np.mean(obs.h_operator(y[:,0], xf), axis=1)[:, None]
         #dy = obs.h_operator(xf, op, ga) - obs.h_operator(xf_, op, ga)[:, None]
+    logger.debug(f"HPfH {dy @ dy.T / (nmem-1)}")
     d = np.zeros_like(y)
     for i in range(len(ytype)):
         op = ytype[i]
@@ -53,19 +66,7 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
     #d = y[:,1] - np.mean(obs.h_operator(y[:,0], xf), axis=1)
     #d = y - obs.h_operator(xf_, op, ga)
     
-    hes = np.eye(nmem) + dy.T @ rinv @ dy
-    condh = la.cond(hes)
     # inflation parameter
-    """
-    if op == "linear" or op == "test":
-        alpha = 1.2
-    elif op == "quadratic" or op == "quadratic-nodiff":
-        #alpha = 1.35
-        alpha = 1.2
-    elif op == "cubic" or op == "cubic-nodiff":
-        #alpha = 1.65
-        alpha = 1.2
-    """
     alpha = infl_parm
     if infl:
         if da != "letkf" and da != "etkf":
@@ -122,7 +123,6 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
 
         dxa = dxf @ T
         xa = dxa + xa_[:,None]
-        pa = dxa@dxa.T/(nmem-1)
 
     elif da=="po":
         Y = np.zeros((y.size,nmem))
@@ -141,7 +141,7 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
         Y = y[:,None] + err
         #Y = y[:,1].reshape(-1,1) + err.reshape(Y.shape)
         #d_ = y + err_ - obs.h_operator(xf_, op, ga)
-        d_ = d #+ err_
+        d_ = d + err_
         #if tlm:
         #    K = pf @ JH.T @ la.inv(JH @ pf @ JH.T + R)
         #else:
@@ -160,8 +160,14 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
             op = ytype[i]
             HX[i, :] = obs.h_operator(xf, op, ga)
             #HX = obs.h_operator(y[:,0], xf)
-        xa = xf + K @ (Y - HX)
-        pa = pf - K @ dy @ dxf.T / (nmem-1)
+        if not tlm or not l_jhi:
+            xa = xf + K @ (Y - HX)
+        else:
+            for j in range(nmem):
+                Kj = dxf @ dyj[j].T @ la.inv(dyj[j] @ dyj[j].T + (nmem-1)*R)
+                xa[:,j] = xf[:,j] + Kj @ (Y[:,j] - HX[:,j])
+        dxa = xa - xa_[:, None]
+        #pa = pf - K @ dy @ dxf.T / (nmem-1)
 
     elif da=="srf":
         I = np.eye(xf_.size)
@@ -178,51 +184,53 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
         if loc:
             logger.info("==localization==")
             dist, l_mat = loc_mat(sigma=4.0, nx=xf_.size, ny=y.size)
-        for i in range(y.size):
+        #for i in range(y.size):
+        i = 0
+        while i < y.size:
             op = ytype[i]
         #for i in range(y.shape[0]):
             #hrow = JH[i].reshape(1,-1)
             dyi = dy0[i,:].reshape(1,-1)
-            #d1 = hrow @ p0 @ hrow.T + sig*sig
-            d1 = dyi @ dyi.T/(nmem-1) + sig*sig
+            d1 = dyi @ dyi.T / (nmem-1) + sig*sig
             #k1 = p0 @ hrow.T /d1
-            k1 = dx0 @ dyi.T /d1/(nmem-1)
-            k1_ = k1 / (1.0 + sig/np.sqrt(d1))
+            k1 = dx0 @ dyi.T / d1 / (nmem-1)
             if loc:
-                k1_ = k1_ * l_mat[:,i].reshape(k1_.shape)
-            #xa_ = x0_.reshape(k1_.shape) + k1_ * (y[i] - hrow@x0_)
-            #xa_ = x0_.reshape(k1_.shape) + k1_ * d0[i]
+                k1 = k1 * l_mat[:,i].reshape(k1.shape)
             xa_ = x0_.reshape(k1.shape) + k1 * d0[i]
+            #d1 = hrow @ p0 @ hrow.T + sig*sig
+            if not tlm or not l_jhi:
+                k1_ = k1 / (1.0 + sig/np.sqrt(d1))            
             #dxa = (I - k1_@hrow) @ dx0
-            dxa = dx0 - k1_ @ dyi
-
+                dxa = dx0 - k1_ @ dyi
+            else:
+                for j in range(nmem):
+                    dyji = dyj[j,i,:].reshape(1,-1)
+                    d1 = dyji @ dyji.T / (nmem-1) + sig*sig
+                    kj = dx0 @ dyji.T / (nmem-1) / (d1 + sig*np.sqrt(d1))
+                    dxa[:,j] = dx0[:,j] - kj @ dyji[:,j]
             x0_ = xa_[:]
             dx0 = dxa[:,:]
             x0 = x0_ + dx0
-            #if tlm:
-            #    logger.debug(x0_.shape)
-            #    logger.debug(obs.dhdx(np.squeeze(x0_), op, ga).shape)
-            #    logger.debug(dx0.shape)
-            #    dy0[i,:] = obs.dhdx(np.squeeze(x0_), op, ga) @ dx0
-            #    #dy0 = obs.dh_operator(y[:,0], x0_) @ dx0
-            #    #dy0 = np.zeros((y.size,nmem))
-            #    #for i in range(nmem):
-            #    #    jhi = obs.dhdx(x0[:,i], op, ga)
-            #    #    dy0[:,i] = jhi @ dx0[:,i]
-            #else:
-            #    dy0[i,:] = obs.h_operator(x0, op, ga) - np.mean(obs.h_operator(x0, op, ga), axis=1)[:, None]
-            #    #dy0 = obs.h_operator(y[:,0], x0) - np.mean(obs.h_operator(y[:,0], x0), axis=1)[:, None]
-            #    #dy0 = obs.h_operator(x0, op, ga) - obs.h_operator(x0_, op, ga)#[:, None]
-            #d0 = y - np.mean(obs.h_operator(x0, op, ga), axis=1)
-            #d0 = y[:,1] - np.mean(obs.h_operator(y[:,0], x0), axis=1)
-            #d0 = y - np.squeeze(obs.h_operator(x0_, op, ga))
-            #p0 = pa[:,:]
-            #print(x0_.shape)
-            #print(dx0.shape)
-            #print(dy0.shape)
-            #print(d0.shape)
-            #print(p0.shape)
-        pa = dxa@dxa.T/(nmem-1)
+            i += 1
+            if i < y.size:
+                if tlm:
+                    op = ytype[i]
+                    logger.debug(op)
+                    if not l_jhi:
+                        logger.debug("linearized about ensemble mean")
+                        dy0[i, :] = obs.dhdx(x0_, op) @ dx0
+                    else:
+                        logger.debug("linearized about each ensemble member")
+                        for j in range(nmem):
+                            jhi = obs.dhdx(x0[:,j], op, ga)
+                            dyj[j, i, :] = jhi @ dx0
+                        dy0[i, :] = obs.dhdx(x0_, op) @ dx0
+                else:
+                    op = ytype[i]
+                    logger.debug(op)
+                    dy0[i, :] = obs.h_operator(x0, op) - np.mean(obs.h_operator(x0, op), axis=1)[:, None]
+                d0 = y - np.mean(obs.h_operator(x0,op), axis=1)
+        #pa = dxa@dxa.T/(nmem-1)
         xa = dxa + xa_
         xa_ = np.squeeze(xa_)
 
@@ -281,7 +289,19 @@ def analysis(xf, xf_, y, ytype, sig, dx, htype, \
             sqrtPa = v @ np.sqrt(D_inv) @ v.T * np.sqrt(nmem-1)
             dxa[i] = dxf[i] @ sqrtPa
             xa[i] = np.full(nmem,xa_[i]) + dxa[i]
-        pa = dxa@dxa.T/(nmem-1)
+
+    if infl_r:
+        sigb = np.sum(np.diag(dy @ dy.T / (nmem-1)))
+        sigo = sig*sig*y.size
+        logger.debug(f"{sigb}, {sigo}")
+        if sigb/sigo < 1e-3: #|HPfHt| << |R|
+            beta = 0.5
+        else:
+            beta = 1.0 / (1.0 + np.sqrt(sigo/(sigo + sigb)))
+        logger.info("relaxation factor = {}".format(beta))
+        dxa = beta * dxa + (1.0 - beta) * dxf
+        xa = xa_[:, None] + dxa
+    pa = dxa@dxa.T/(nmem-1)
     if save_dh:
         #logger.info("save pa")
         np.save("{}_pa_{}_{}_cycle{}.npy".format(model, op, da, icycle), pa)

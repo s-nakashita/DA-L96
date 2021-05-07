@@ -7,7 +7,7 @@ op = sys.argv[1]
 model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-perts = ["mlefw", "gradw"]
+perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]
 #if model == "z08":
 #    na = 20
 #elif model == "l96":
@@ -24,8 +24,9 @@ linestyle=["solid","dashed"]
 #methods = ["bg", "nm", "pw" ,"gd", "gdf", 
 #"ncg", "tnc", "dog"]
 #methods_cgf = ["cgf_fr", "cgf_pr", "cgf_prb"]
-methods = ["ncg", "tnc"]
-methods_cgf = []
+#methods = ["dog", "trn", "trk", "tre"]
+methods_cgf = ["cgf_fr"]
+methods = []
 for pt in perts:
     #fig, ax = plt.subplots()
     #width = np.array(obs_s)*0.025
@@ -75,52 +76,53 @@ for pt in perts:
 #    score.write("{:5.3e} ".format(dmean))
 #    score.write("\n")
     j += 1
-    if pt[0:4] != "etkf":
+    #if pt[0:4] != "etkf":
     #if len(pt) < 5:
-        for method in methods_cgf:
-            score.write(f"{method.ljust(7)}   mean ")
-            i = 0
-            dmean = 0.0
-            for oberr in oberrs:
-                fm = "cgf_rest_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
-                if not os.path.isfile(fm):
-                    print("not exist {}".format(fm))
-                    score.write("nan".ljust(10))
-                    emean[j,i] = np.nan
-                    i += 1
-                    continue
-                e = np.loadtxt(fm)
-                score.write("{:5.3e} ".format(np.mean(e[5:])))
-                emean[j,i] = np.mean(e[5:])
-                dmean += np.log10(np.mean(e[5:])/obs_s[oberrs.index(oberr)])
+    for method in methods_cgf:
+        score.write(f"{method.ljust(7)}   mean ")
+        i = 0
+        dmean = 0.0
+        for oberr in oberrs:
+            #fm = "cgf_rest_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
+            fm = "linear_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
+            if not os.path.isfile(fm):
+                print("not exist {}".format(fm))
+                score.write("nan".ljust(10))
+                emean[j,i] = np.nan
                 i += 1
-            dmean /= i
-            score.write("{:5.3e} ".format(dmean))
-            score.write("\n")
-            j += 1
-        for method in methods:
-            score.write(f"{method.ljust(7)}   mean ")
-            i = 0
-            dmean = 0
-            for oberr in oberrs:
-                #fm = "mlef-rest_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
-                fm = "ncg_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
-                if not os.path.isfile(fm):
-                    print("not exist {}".format(fm))
-                    score.write("nan".ljust(10))
-                    emean[j,i] = np.nan
-                    i += 1
-                    continue
-                e = np.loadtxt(fm)
-                score.write("{:5.3e} ".format(np.mean(e[5:])))
-                emean[j,i] = np.mean(e[5:])
-                dmean += np.log10(np.mean(e[5:])/obs_s[oberrs.index(oberr)])
-                i += 1
-            dmean /= i
-            score.write("{:5.3e} ".format(dmean))
-            score.write("\n")
-            j += 1
-    score.write("\n")
+                continue
+            e = np.loadtxt(fm)
+            score.write("{:5.3e} ".format(np.mean(e[5:])))
+            emean[j,i] = np.mean(e[5:])
+            dmean += np.log10(np.mean(e[5:])/obs_s[oberrs.index(oberr)])
+            i += 1
+        dmean /= i
+        score.write("{:5.3e} ".format(dmean))
+        score.write("\n")
+        j += 1
+#        for method in methods:
+#            score.write(f"{method.ljust(7)}   mean ")
+#            i = 0
+#            dmean = 0
+#            for oberr in oberrs:
+#                #fm = "mlef-rest_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
+#                fm = "w-trust_oberr/{}_{}_oberr{}_{}_mean.txt".format(op, pt, oberr, method)
+#                if not os.path.isfile(fm):
+#                    print("not exist {}".format(fm))
+#                    score.write("nan".ljust(10))
+#                    emean[j,i] = np.nan
+#                    i += 1
+#                    continue
+#                e = np.loadtxt(fm)
+#                score.write("{:5.3e} ".format(np.mean(e[5:])))
+#                emean[j,i] = np.mean(e[5:])
+#                dmean += np.log10(np.mean(e[5:])/obs_s[oberrs.index(oberr)])
+#                i += 1
+#            dmean /= i
+#            score.write("{:5.3e} ".format(dmean))
+#            score.write("\n")
+#            j += 1
+#    score.write("\n")
 #    method = "lb"
     j = 0
     i = 0
@@ -153,39 +155,40 @@ for pt in perts:
 #        i += 1
 #    score.write("\n")
     j += 1
-    if pt[0:4] != "etkf":
+#    if pt[0:4] != "etkf":
     #if len(pt) < 5:
-        for method in methods_cgf:
-            i = 0
-            score.write(f"{method.ljust(7)}   stdv ")
-            for oberr in oberrs:
-                fs = "cgf_rest_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
-                if not os.path.isfile(fs):
-                    print("not exist {}".format(fs))
-                    score.write("nan".ljust(10))
-                    #el[i] = np.nan
-                    i += 1
-                    continue
-                e = np.loadtxt(fs)
-                score.write("{:5.3e} ".format(np.mean(e[5:])/emean[j,i]))
+    for method in methods_cgf:
+        i = 0
+        score.write(f"{method.ljust(7)}   stdv ")
+        for oberr in oberrs:
+            #fs = "cgf_rest_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
+            fs = "linear_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
+            if not os.path.isfile(fs):
+                print("not exist {}".format(fs))
+                score.write("nan".ljust(10))
+                #el[i] = np.nan
                 i += 1
-            score.write("\n")
-            j += 1
-        for method in methods:
-            i = 0
-            score.write(f"{method.ljust(7)}   stdv ")
-            for oberr in oberrs:
-                #fs = "mlef-rest_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
-                fs = "ncg_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
-                if not os.path.isfile(fs):
-                    print("not exist {}".format(fs))
-                    score.write("nan".ljust(10))
-                    #el[i] = np.nan
-                    i += 1
-                    continue
-                e = np.loadtxt(fs)
-                score.write("{:5.3e} ".format(np.mean(e[5:]/emean[j,i])))
-                i += 1
-            score.write("\n")
-            j += 1
+                continue
+            e = np.loadtxt(fs)
+            score.write("{:5.3e} ".format(np.mean(e[5:])/emean[j,i]))
+            i += 1
+        score.write("\n")
+        j += 1
+#        for method in methods:
+#            i = 0
+#            score.write(f"{method.ljust(7)}   stdv ")
+#            for oberr in oberrs:
+#                #fs = "mlef-rest_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
+#                fs = "w-trust_oberr/{}_{}_oberr{}_{}_stdv.txt".format(op, pt, oberr, method)
+#                if not os.path.isfile(fs):
+#                    print("not exist {}".format(fs))
+#                    score.write("nan".ljust(10))
+#                    #el[i] = np.nan
+#                    i += 1
+#                    continue
+#                e = np.loadtxt(fs)
+#                score.write("{:5.3e} ".format(np.mean(e[5:]/emean[j,i])))
+#                i += 1
+#            score.write("\n")
+#            j += 1
     score.close()

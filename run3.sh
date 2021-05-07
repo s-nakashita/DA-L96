@@ -2,17 +2,17 @@
 #set -x
 #operators="linear quadratic cubic quartic"
 operators="quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
-perturbations="mlefw gradw" # po srf letkf"
+perturbations="mlef grad" # po srf letkf"
 #perturbations="mlef08m grad08m mlef05 grad05 mlef08 grad08"
 #perturbations="mlef grad hyvar envar"
 na=20
 linf="F"
 lloc="F"
 ltlm="F"
-irest="F"
+irest="T"
 model=z08
 #vname="oberr"
-exp="w-trust"
+exp="cgf_fr-rest"
 echo ${exp} ${vname}
 #sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
 #sigma="0.1 0.01 0.001 0.0001"
@@ -37,12 +37,12 @@ for op in ${operators}; do
 #for obs_s in $sigma ; do
   #obs_s=0.01
 #for lag in $lags ; do
-for method in $methods ; do
+#for method in $methods ; do
   #var=
   #var=${lag} 
   #var=${obs_s}
-  var=${method}
-  #var=cgf_fr
+  #var=${method}
+  var=cgf_fr
   #ivar=0
   #ivar=${lag} 
   #ivar=$(python iobs.py ${obs_s})
@@ -134,13 +134,13 @@ for method in $methods ; do
   #done
   python ${src}/plote.py ${op} z08 ${na}
 #  python ${src}/plottrpa.py ${op} z08 ${na}
-  mv z08_e_${op}.png z08_e_${op}_${var}.png
-  mv z08_e_${op}.pdf z08_e_${op}_${var}.pdf
-  mv z08_elog_${op}.png z08_elog_${op}_${var}.png
-  mv z08_elog_${op}.pdf z08_elog_${op}_${var}.pdf
+#  mv z08_e_${op}.png z08_e_${op}_${var}.png
+#  mv z08_e_${op}.pdf z08_e_${op}_${var}.pdf
+#  mv z08_elog_${op}.png z08_elog_${op}_${var}.png
+#  mv z08_elog_${op}.pdf z08_elog_${op}_${var}.pdf
 #  python ${src}/plotua.py ${op} z08 ${na}
 #  python ${src}/plotk.py ${op} z08 ${na}
-#  python ${src}/plotjh.py ${op} z08 ${na}
+  python ${src}/plotjh.py ${op} z08 ${na}
 #  for i in $(seq 0 3); do
 #    mv z08_gh_${op}_cycle${i}.png z08_gh_${op}_cycle${i}_${var}.png
 #  done
@@ -187,7 +187,7 @@ for method in $methods ; do
 #done
 #python plottrpf.py ${op} ${model} ${na}
 #mv ${model}_trpf_${op}.png ${model}_trpf_${op}_${exp}.png
-done # for obs_s
+#done # for obs_s or methods
 #for pt in ${perturbations}; do
 #python ../plotemethod.py ${op} z08 ${na} #${pt}
 #done

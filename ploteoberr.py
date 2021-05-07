@@ -7,14 +7,14 @@ op = sys.argv[1]
 model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-#perts = ["mlef", "grad"]
+perts = ["mlef", "grad"]
 #perts = ["mlef", "etkf-fh"]
-perts = ["grad", "etkf-jh"]
+#perts = ["grad", "etkf-jh"]
 #if model == "z08":
 #    na = 20
 #elif model == "l96":
 #    na = 100
-plt.rcParams['legend.fontsize'] = 12
+plt.rcParams['legend.fontsize'] = 16
 plt.rcParams['axes.labelsize'] = 16
 plt.rcParams['axes.titlesize'] = 16
 #plt.rcParams['xtick.labelsize'] = 16
@@ -27,7 +27,7 @@ oberrs = [str(int(obs_s[i]*1e5)).zfill(5) for i in range(len(obs_s))]
 print(oberrs)
 linecolor={"mlef":"tab:blue","grad":"tab:orange","etkf-fh":"tab:green","etkf-jh":"tab:red",
            "mlefb":"tab:cyan","mleft":"tab:pink"}
-linestyle=["solid","dashed"]
+linestyle=["solid","dashed","dashdot"]
 methods = ["lb","bg","cg","nm","gd"]#,"cgf_fr","cgf_pr","cgf_prb"]
 #linecolor = {"lb":'tab:blue',"bg":'tab:orange',
 #    "cg":'tab:green',"nm":'tab:red',
@@ -85,12 +85,14 @@ for pt in perts:
     else:
         label = pt
     ax.plot(obs_s, el, linestyle=linestyle[0], color=linecolor[pt], label=label)
+    #ax.plot(obs_s, el, linestyle=linestyle[j], color="tab:blue", label=label)
     #    ax.plot(obs_s, el, linestyle=linestyle[0], color=linecolor[method], label=method)
         #ax.bar(xaxis, el, width=width, color=linecolor[method], label=method)
         #xaxis += width
   
     i = 0
     if pt == "etkf-fh":
+        j += 1
         for oberr in oberrs:
         #f = "{}_e_{}-nodiff_{}_oberr{}_mean.txt".format(model, op, pt, oberr)
             f = "etkf-fh_oberr/{}_{}_oberr{}_mean.txt".format(op, pt, oberr)
@@ -105,6 +107,7 @@ for pt in perts:
             i += 1
         label = pt + " op-av"
         ax.plot(obs_s, eld, linestyle=linestyle[1], color=linecolor[pt], label=label)
+        #ax.plot(obs_s, eld, linestyle=linestyle[j], color="tab:blue", label=label)
     #    ax.plot(obs_s, eld, linestyle=linestyle[1], color=linecolor[method], label="{}-nodiff".format(method))
     
     j += 1
@@ -126,5 +129,5 @@ ax.set_yscale("log")
 #ax.set_xticks(x[::5])
 #ax.set_xticks(x, minor=True)
 ax.legend(ncol=2)
-fig.savefig("{}_eoberr_{}_jh.png".format(model, op))
-fig.savefig("{}_eoberr_{}_jh.pdf".format(model, op))
+#fig.savefig("{}_eoberr_{}_mlef.png".format(model, op))
+fig.savefig("{}_eoberr_{}_mlef.pdf".format(model, op))

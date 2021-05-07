@@ -9,6 +9,7 @@ na = int(sys.argv[3])
 perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", 
          "mlefw", "mlef3", "mlefh"]
 linestyle = ["solid", "dashed"]
+plt.rcParams['legend.fontsize'] = 16
 plt.rcParams["axes.titlesize"] = 16
 plt.rcParams["axes.labelsize"] = 16
 for i in range(4):

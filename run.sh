@@ -1,9 +1,8 @@
 #!/bin/sh
 #set -x
-operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
-#operators="quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
+operators="linear quadratic cubic quartic quadratic-nodiff cubic-nodiff quartic-nodiff"
 #perturbations="etkf-jh etkf-fh mlef grad" # po srf letkf"
-perturbations="mlef grad"
+perturbations="mlef grad etkf-fh etkf-jh"
 #perturbations="etkf-fh" # etkf-jh"
 na=20
 linf="F"
@@ -12,16 +11,17 @@ ltlm="F"
 irest="F"
 model=z08
 vname="oberr"
-exp="trust_oberr"
+exp="t0c_oberr"
 echo ${exp} ${vname}
-sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001"
-#sigma="0.05"
-#lags="4 6 8 10 12 14 16 18"
+#sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001 0.00005 0.00002 0.00001"
+sigma="0.001"
+lags="25 30 35 40 45 50 55 60 65 70"
 #maxiter="1 5 10 15 20"
-member="4 6 8 10 12 14 16 18 20 30 40"
+#member="4 6 8 10 12 14 16 18 20 30 40"
 #methods="bg nm pw gd gdf ncg tnc dog"
 #methods="cgf_fr cgf_pr cgf_prb"
-methods="trn trk tre"
+#methods="dog"
+#methods="dog trn trk tre"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
@@ -41,9 +41,9 @@ for obs_s in $sigma ; do
 #for nmem in $member ; do
 #for mi in ${maxiter} ; do
   #obs_s=0.01
-#for lag in $lags ; do
-for method in $methods; do
-  #method=ncg
+for lag in $lags ; do
+#for method in $methods; do
+  method=cgf_fr
   #var=
   #var=${lag} 
   var=${obs_s}
@@ -57,27 +57,32 @@ for method in $methods; do
   echo ${exp} ${vname}
   for count in $(seq 1 50); do
     for pert in ${perturbations}; do
-    #pt=${pert:0:4}
-    #if test "${pert:5:2}" = "jh" ; then
-    #  ltlm="T"
-    #elif test "${pert:5:2}" = "fh" ; then
-    #  ltlm="F"
-    #fi
-    pt=${pert}
+    pt=${pert:0:4}
+    if test "${pert:5:2}" = "jh" ; then
+      ltlm="T"
+    elif test "${pert:5:2}" = "fh" ; then
+      ltlm="F"
+    fi
+    #pt=${pert}
     if test ${pt} = mlef ; then
       pt=mlef05
     elif test ${pt} = grad ; then
       pt=grad05
     fi
-    echo ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} ${method} ${irest}
+    lplot="F"
+    if test ${count} = 1 && test "${op}" = "linear" ; then
+      lplot="T"
+    fi
+    echo ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} ${method} ${irest} ${lag} ${lplot}
     echo ${vname} ${na} ${ivar}
-    python ${src}/z08-2.py ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} ${method} ${irest} > z08_${op}_${pert}_${ivar}_${method}_${count}.log 2>&1
+    python ${src}/z08-2.py ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} ${method} ${irest} ${lag} ${lplot} > z08_${op}_${pert}_${ivar}_lag${lag}_${count}.log 2>&1
     #python ${src}/z08.py ${op} ${pt} ${linf} ${lloc} ${ltlm} ${var} ${method} > z08_${op}_${pert}.log 2>&1
     wait
     #mv z08_${op}_${pert}.log z08_${op}_${pert}_mi${mi}.log
     #tail -1 z08_e_${op}_${pt}.txt
     #tail -1 z08_e_${op}_${pt}_${vname}${ivar}.txt
-    tail -1 z08_e_${op}_${pt}_${vname}${ivar}_${method}.txt
+    #tail -1 z08_e_${op}_${pt}_${vname}${ivar}_${method}.txt
+    tail -1 z08_e_${op}_${pt}_${vname}${ivar}_lag${lag}.txt
     #mv z08_e_${op}_${pt}_${vname}${ivar}.txt z08_e_${op}_${pert}_${vname}${ivar}.txt
     #mv z08_e_${op}_${pt}_${vname}${ivar}.txt z08_e_${op}_${pt}.txt
     #cp z08_chi_${op}_${pt}_${vname}${ivar}.txt z08_chi_${op}_${pt}.txt
@@ -88,7 +93,8 @@ for method in $methods; do
     #mv z08_e_${op}_${pt}.txt e${ivar}_${count}.txt
     #mv z08_chi_${op}_${pt}.txt chi${ivar}_${count}.txt
     #mv z08_e_${op}_${pt}_${vname}${ivar}.txt ${op}_${pert}_${vname}${ivar}_${count}.txt
-    mv z08_e_${op}_${pt}_${vname}${ivar}_${method}.txt ${op}_${pert}_${vname}${ivar}_${method}_${count}.txt
+    #mv z08_e_${op}_${pt}_${vname}${ivar}_${method}.txt ${op}_${pert}_${vname}${ivar}_${method}_${count}.txt
+    mv z08_e_${op}_${pt}_${vname}${ivar}_lag${lag}.txt ${op}_${pert}_${vname}${ivar}_t0c${lag}_${count}.txt
     #mv z08_ua_${op}_${pt}_cycle0.npy ua_${op}_${pert}_cycle0_${count}.npy
     done # for perturbation    
     rm obs*.npy

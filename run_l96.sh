@@ -1,14 +1,14 @@
 #!/bin/sh
 #operators="linear quadratic cubic quadratic-nodiff cubic-nodiff"
-operators="linear linear-nodiff abs"
-perturbations="mlef grad etkf po srf letkf"
+operators="linear abs"
+perturbations="mlef etkf po srf letkf"
 #perturbations="mlef grad mlefb mleft mlef05 grad05 mlefw mlef3"
 #perturbations="mlef grad etkf-jh etkf-fh"
 na=200 # Number of assimilation cycle
 linf="T"
 lloc="F"
 ltlm="F"
-exp="l96_nodiff"
+exp="l96_nt"
 echo ${exp}
 src=$(pwd)
 rm -rf ${exp}
@@ -77,7 +77,7 @@ for op in ${operators}; do
   #done
   #python ../plotega.py ${op} l96 ${na} 
   python ../plote.py ${op} l96 ${na}
-  python ../plotgh.py ${op} l96 ${na}
+#  python ../plotgh.py ${op} l96 ${na}
 #  python ../plotjh.py ${op} l96 ${na}
 done
 #./plot.sh l96 ${exp} ${operators} ${na}

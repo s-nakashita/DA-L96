@@ -126,6 +126,12 @@ if len(sys.argv) > 8:
         restart = True
     elif sys.argv[8] == "F":
         restart = False
+# initial lag
+lplot = False
+if len(sys.argv) > 9:
+    t0c = int(sys.argv[9])
+    if sys.argv[10] == "T":
+        lplot = True
 t0m = [t0c + t0off//2 + t0off * i for i in range(-nmem//2, nmem//2)]
 t0f = [t0c] + t0m
 logger.info("nmem={} t0true={} t0f={}".format(nmem, t0true, t0f))
@@ -269,7 +275,7 @@ def analysis(u, y, rmat, rinv, sig, htype, hist=False, dh=False,\
         u = ua
     return u, pa, chi2, ds, condh
 
-def plot_initial(u, ut, lag, model):
+def plot_initial(u, ut, t0c, model):
     fig = plt.figure(figsize=(8,6))
     ax = fig.add_subplot()
     x = np.arange(ut.size) + 1
@@ -279,13 +285,13 @@ def plot_initial(u, ut, lag, model):
             ax.plot(x, u[:,i], label="control")
         else:
             ax.plot(x, u[:,i], linestyle="--", color="tab:green") #, label="mem{}".format(i))
-    ax.set(xlabel="points", ylabel="u", title="initial lag={}".format(lag))
+    ax.set(xlabel="points", ylabel="u", title="initial lag={}".format(t0off))
     ax.set_xticks(x[::10])
     ax.set_xticks(x[::5], minor=True)
     ax.set_ylim([0.0,1.2])
     ax.legend()
-    fig.savefig("{}_initial_nmem{}.png".format(model, u.shape[1]-1))
-    fig.savefig("{}_initial_nmem{}.pdf".format(model, u.shape[1]-1))
+    fig.savefig("{}_initial_t0c{}.png".format(model, t0c))
+    #fig.savefig("{}_initial_nmem{}.pdf".format(model, u.shape[1]-1))
 
 if __name__ == "__main__":
     op = htype["operator"]
@@ -305,7 +311,8 @@ if __name__ == "__main__":
         logger.info("read obs")
 #        print("read obs")
         obs = get_obs(obsfile)
-    #plot_initial(u, ut[0], t0off, model)
+    if lplot:
+        plot_initial(u, ut[0], t0c, model)
     #if pt == "mlef" or pt == "grad":
     #    p0 = u[:, 1:] - u[:, 0].reshape(-1,1) / np.sqrt(nmem-1)
     #    u[:, 1:] = u[:, 0].reshape(-1,1) + p0
@@ -407,7 +414,8 @@ if __name__ == "__main__":
     np.savetxt("{}_ndpa_{}_{}.txt".format(model, op, pt), ndpa)
     if len(sys.argv) > 7:
         oberr = str(int(obs_s*1e5)).zfill(5)
-        np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
+        #np.savetxt("{}_e_{}_{}_oberr{}_{}.txt".format(model, op, pt, oberr, method_short), e)
+        np.savetxt("{}_e_{}_{}_oberr{}_lag{}.txt".format(model, op, pt, oberr, t0c), e)
         #np.savetxt("{}_e_{}_{}_nmem{}_{}.txt".format(model, op, pt, nmem, method_short), e)
         #np.savetxt("{}_chi_{}_{}_oberr{}_{}_{}.txt".format(model, op, pt, oberr, method_short), chi)
         #np.savetxt("{}_dof_{}_{}_oberr{}_{}_{}.txt".format(model, op, pt, oberr, method_short), dof)
