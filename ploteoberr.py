@@ -7,14 +7,14 @@ op = sys.argv[1]
 model = sys.argv[2]
 na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
-perts = ["mlef", "grad"]
+perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]
 #perts = ["mlef", "etkf-fh"]
 #perts = ["grad", "etkf-jh"]
 #if model == "z08":
 #    na = 20
 #elif model == "l96":
 #    na = 100
-plt.rcParams['legend.fontsize'] = 16
+plt.rcParams['legend.fontsize'] = 14
 plt.rcParams['axes.labelsize'] = 16
 plt.rcParams['axes.titlesize'] = 16
 #plt.rcParams['xtick.labelsize'] = 16
@@ -128,6 +128,6 @@ ax.set_xscale("log")
 ax.set_yscale("log")
 #ax.set_xticks(x[::5])
 #ax.set_xticks(x, minor=True)
-ax.legend(ncol=2)
+#ax.legend(ncol=2)
 #fig.savefig("{}_eoberr_{}_mlef.png".format(model, op))
-fig.savefig("{}_eoberr_{}_mlef.pdf".format(model, op))
+fig.savefig("{}_eoberr_{}.pdf".format(model, op))

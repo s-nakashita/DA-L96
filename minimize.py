@@ -1,5 +1,6 @@
 from lbfgs import lbfgs
 from cg import cgfam, cvsmod
+from bfgs import bfgs
 import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spo
@@ -39,8 +40,12 @@ class Minimize():
         # for lbfgs
         self.diagco = False
         self.diag = np.ones(self.n)
+        #if self.method == "LBFGS":
         self.llwork = self.n*(2*self.m+1)+2*self.m
+        #else:
+        self.lbwork = self.n*self.n+self.n*3
         self.lwork = np.zeros(self.llwork)
+        self.bwork = np.zeros(self.lbwork)
         # for cgfam
         self.desc = np.ones(self.n)
         # self.cgtype = 1 : Fletcher-Reeves
@@ -68,6 +73,8 @@ class Minimize():
     def __call__(self, x0, callback=None):
         if self.method == "LBFGS":
             return self.minimize_lbfgs(x0, callback=callback)
+        elif self.method == "BFGS":
+            return self.minimize_bfgs(x0, callback=callback)
         elif self.method == "CGF":
             return self.minimize_cgf(x0, callback=callback)
         elif self.method == "GD" or self.method == "GDF":
@@ -543,6 +550,104 @@ class Minimize():
 
         return x, iflag
 
+    def minimize_bfgs(self, x0, callback=None):
+        icall = 0
+        iflag = 0
+
+        fval = 0.0
+        gval = np.zeros_like(x0)
+        if self.args != None:
+            fval = self.func(x0, *self.args)
+            gval = self.jac(x0, *self.args)
+        else:
+            fval = self.func(x0)
+            gval = self.jac(x0)
+        logger.info("initial function value = {}".format(fval))
+#        print("initial function value = {}".format(fval))
+        logger.info("initial gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+#        print("initial gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+
+        x = x0.copy()
+        #alpha = 1.0
+        #if callback != None:
+        #    callback(x, alpha)
+        if self.maxiter is None:
+            maxiter = len(x0)*200
+        else:
+            maxiter = self.maxiter
+        # check stagnation
+        nomove = 0
+        gold = gval
+        while icall < maxiter:
+            [xk, dk, alphak, oflag] = bfgs(n=self.n, x=x, f=fval, g=gval, \
+                          diagco=self.diagco, diag=self.diag, \
+                          iprint=self.iprint, eps=self.eps, xtol=self.xtol, w=self.bwork, \
+                          iflag=iflag, irest=self.irest)
+            iflag = oflag
+            #logger.debug(f"iflag={iflag} lsinfo={lsinfo}")
+            #update = np.dot((xk - x),(xk - x))
+            #logger.debug(f"update={update}")
+            x = xk[:]
+            if iflag == 3: # line-search terminated successfully but not converged
+                if callback != None:
+                    callback(x, alphak)
+                if self.irest == 1:
+                    # mutual orthogonality check
+                    if np.dot(gold, gval) >= 0.2*np.dot(gval, gval):
+                        logger.info("not satisfy mutual orthogonality")
+                        iflag = -2
+                        break
+                    # downhill check
+                    if np.dot(gval, dk) > -0.8*np.dot(gval, gval) \
+                        or np.dot(gval, dk) < -1.2*np.dot(gval, gval):
+                        logger.info("not satisfy downhill direction")
+                        iflag = -2
+                        break
+                icall += 1
+                gold = gval
+            if iflag == 1: # in line-search iteration
+                if self.args != None:
+                    fval = self.func(x, *self.args)
+                    gval = self.jac(x, *self.args)
+                else:
+                    fval = self.func(x)
+                    gval = self.jac(x)
+            if iflag == 0:
+                icall += 1
+                if callback != None:
+                    callback(x, alphak)
+                logger.info("minimization success")
+                logger.info("iteration = {}".format(icall))
+                logger.info("final step-length = {}".format(alphak))
+#                print("iteration = {}".format(icall))
+                logger.info("final function value = {}".format(fval))
+#                print("final function value = {}".format(fval))
+                logger.info("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+#                print("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+                break
+            if iflag <= 0:
+                if callback != None:
+                    callback(x, alphak)
+                logger.info("minimization failed, FLAG = {}".format(iflag))
+                logger.info("iteration = {}".format(icall))
+                logger.info("final step-length = {}".format(alphak))
+#                print("iteration = {}".format(icall))
+                logger.info("final function value = {}".format(fval))
+#                print("final function value = {}".format(fval))
+                logger.info("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+#                print("final gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+                break
+        if iflag > 0:
+            logger.info("minimization not converged")
+#            print("minimization not converged")
+            logger.info("current step-length = {}".format(alphak))
+            logger.info("current function value = {}".format(fval))
+#            print("current function value = {}".format(fval))
+            logger.info("current gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+#            print("current gradient norm = {}".format(np.sqrt(np.dot(gval, gval))))
+
+        return x, iflag
+
     def minimize_scipy(self, x0, callback=None):
         if self.method == "Nelder-Mead":
             if self.args is not None:
@@ -615,7 +720,7 @@ if __name__ == "__main__":
 
     n = 100
     iprint = np.ones(2, dtype=np.int32)
-    iprint[0] = 0
+    iprint[0] = 1
     iprint[1] = 0
     print(iprint)
 
@@ -627,10 +732,10 @@ if __name__ == "__main__":
         x0[i+1] = 1.0
         
     method = "LBFGS"
-    minimize = Minimize(n, rosen, jac=rosen_der, args=args, iprint=iprint,
-     method=method, maxiter=None)
-    #minimize = Minimize(n, sphere, jac=sphere_der, args=args, iprint=iprint,
+    #minimize = Minimize(n, rosen, jac=rosen_der, args=args, iprint=iprint,
     # method=method, maxiter=None)
+    minimize = Minimize(n, sphere, jac=sphere_der, args=args, iprint=iprint,
+     method=method, maxiter=None)
 
     start = time.time()
     #x = minimize.minimize_lbfgs(x0)
@@ -639,9 +744,11 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
-    """
+
     method = "BFGS"
-    minimize = Minimize(n, rosen, jac=rosen_der, args=args, iprint=iprint,
+    #minimize = Minimize(n, rosen, jac=rosen_der, args=args, iprint=iprint,
+    # method=method, maxiter=None)
+    minimize = Minimize(n, sphere, jac=sphere_der, args=args, iprint=iprint,
      method=method, maxiter=None)
     start = time.time()
     #x = minimize.minimize_scipy(x0)
@@ -650,7 +757,7 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
-
+    """
     method = "BFGS-jacfree"
     minimize = Minimize(n, rosen, jac=None, args=args, iprint=iprint,
      method="BFGS", maxiter=None)
@@ -708,7 +815,7 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
-    """
+    
     method = "GD"
     minimize = Minimize(n, rosen, jac=rosen_der, args=args, iprint=iprint,
      method=method, maxiter=None)
@@ -734,7 +841,7 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
-    """
+    
     method = "Newton-CG"
     minimize = Minimize(n, rosen, jac=rosen_der, hess=rosen_hess, args=args, iprint=iprint,
      method=method, maxiter=None)
@@ -746,7 +853,7 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
-    """
+
     method = "Newton"
     minimize = Minimize(n, rosen, jac=rosen_der, hess=rosen_hess, args=args, iprint=iprint,
      method=method, maxiter=None)
@@ -760,3 +867,4 @@ if __name__ == "__main__":
     print("{} elapsed_time:{:7.3e}".format(method, elapsed_time)+"s")
     err = np.sqrt(np.mean((x-1.0)**2))
     print(f"err={err}")
+    """

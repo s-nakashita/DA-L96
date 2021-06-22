@@ -9,7 +9,8 @@ na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
 #    #perts = ["mlef08m", "grad08m", "mlef08", "grad08", "mlef05", "grad05"]
-    perts = ["mlef", "grad", "mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "gradw"]
+    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]
+     #"mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "gradw"]
     linestyle = {"mlef":"solid", "grad":"dashed",
      "mlef08m":"solid", "grad08m":"dashed",
      "mlef08":"solid", "grad08":"dashed",
@@ -39,7 +40,7 @@ if model == "z08" or model == "z05":
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
-    sigma = {"linear": 1.0e-3, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-3, \
+    sigma = {"linear": 1.0e-3, "quadratic": 1.0e-4, "cubic": 1.0e-3, "quartic": 1.0e-3, \
     "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-3, "test":8.0e-2}
     x = np.arange(na+1)
     x = np.arange(na) + 1

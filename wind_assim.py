@@ -10,23 +10,23 @@ from enkf_wind import analysis as analysis_enkf
 from var_wind import analysis as analysis_var
 from hyvar import analysis as analysis_hyvar
 
-htype = {"operator":"speed","perturbation":"srf","gamma":1}
+htype = {"operator":"speed","perturbation":"mlef","gamma":1}
 infl = False
 infl_parm = 1.15
 infl_r = False
-tlm = True
-l_jhi = True
-var = "u+w_noI"
+tlm = False
+l_jhi = False
+var = "w+u_noI_rsc"
 
 wmean0 = np.array([2.0,4.0])
 wstdv0 = np.array([2.0,2.0])
 nmem = 1000
 #y = np.array([3.0]) #observation [m/s]
-#y = np.array([3.0, 1.0]) #observation [m/s]
-y = np.array([1.0, 3.0]) #observation [m/s]
+y = np.array([3.0, 1.0]) #observation [m/s]
+#y = np.array([1.0, 3.0]) #observation [m/s]
 #ytype = ["speed"] #observation type [wind speed]
-#ytype = ["speed","u"] #observation type [wind speed & u-component]
-ytype = ["u","speed"] #observation type [wind speed & u-component]
+ytype = ["speed","u"] #observation type [wind speed & u-component]
+#ytype = ["u","speed"] #observation type [wind speed & u-component]
 sig = 0.3 #observation error [m/s]
 #rmat = np.array([1.0 / sig]).reshape(-1,1)
 #rinv = np.array([1.0 / sig / sig]).reshape(-1,1)   
@@ -51,11 +51,16 @@ if htype["perturbation"] == "mlef":
         var = var + "_fh"
     xf = xf0
     xfc = xc0
+    # rescaling 
+    pf = (xf - xfc[:, None])/np.sqrt(nmem)
+    xf = xfc[:, None] + pf
     # assimilation
     xc, pa, chi2 = analysis(xf, xfc, y, ytype, rmat, rinv, htype, method="CGF", 
                               cgtype=1, maxiter=None, restart=True,
                               infl=infl, infl_parm=infl_parm, 
                               tlm=tlm, l_jhi=l_jhi)
+    # rescaling
+    pa = pa * np.sqrt(nmem)
     xa = xc[:, None] + pa
     print(np.sqrt(xc[0]**2 + xc[1]**2))
     print(xc[0])

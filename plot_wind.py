@@ -12,7 +12,8 @@ import obs
 def plot_wind(xf, xf_, xa, xa_, y, sig, ytype, htype, var):
     theta = np.linspace(0.0, 2.0*np.pi, 360)
     ind_speed = ytype.index("speed")
-    ind_u = ytype.index("u")
+    if y.size > 1:
+        ind_u = ytype.index("u")
     rmin = y[ind_speed] - sig
     rmax = y[ind_speed] + sig
     xmin = rmin*np.cos(theta)
@@ -60,6 +61,32 @@ def plot_wind(xf, xf_, xa, xa_, y, sig, ytype, htype, var):
     fig.savefig("{}_speed_{}.png".format(htype["perturbation"], var))
     plt.close()
 
+    sb = np.zeros((y.size, xf.shape[1]))
+    for i in range(y.size):
+        op = ytype[i]
+        sb[i] = obs.h_operator(xf, op)
+    sb -= y[:, None] #[0]
+    vlim = 5.0 #max(np.max(sa), -np.min(sa))
+    if y.size <= 1:
+        plt.hist(sb[0], bins=100, density=True, range=(-vlim,vlim))
+        plt.title(r"$y-H(x^f_i)$")
+        plt.savefig("{}_init_hist_{}.png".format(htype["perturbation"], var))
+        plt.close()
+    else:
+        fig, ax = plt.subplots(nrows=2)
+        for i in range(y.size):
+            ax[i].hist(sb[i], bins=100, density=True, range=(-vlim, vlim))
+            ax[i].set_title(ytype[i])
+        fig.suptitle(r"$y-H(x^f_i)$")
+        fig.tight_layout()
+        fig.savefig("{}_init_hist_{}.png".format(htype["perturbation"], var))
+        plt.close()
+    for i in range(y.size):
+        print(ytype[i])
+        print("O-B mean={}".format(np.mean(sb[i])))
+        stdv = np.sqrt(np.mean(sb[i]**2) - np.mean(sb[i])**2)
+        print("O-B stdv={}".format(stdv))
+
     sa = np.zeros((y.size, xa.shape[1]))
     for i in range(y.size):
         op = ytype[i]
@@ -86,16 +113,17 @@ def plot_wind(xf, xf_, xa, xa_, y, sig, ytype, htype, var):
         stdv = np.sqrt(np.mean(sa[i]**2) - np.mean(sa[i])**2)
         print("O-A stdv={}".format(stdv))
 
-    ut = y[ind_u]
-    st = y[ind_speed]
-    vtp = np.sqrt(st**2 - ut**2)
-    vtm = -vtp 
-    print(vtp, vtm)
-    tan = xa[0] / xa[1]
-    fig, ax = plt.subplots()
-    ax.hist(tan, bins=100, density=True, range=(-vlim,vlim))
-    ax.axvline(x=1.0/vtp, color="red", linestyle="dashed")
-    ax.axvline(x=1.0/vtm, color="red", linestyle="dashed")
-    ax.set_title(r"$\tan \theta$")
-    fig.savefig("{}_tan_{}.png".format(htype["perturbation"], var))
-    plt.close()
+    if y.size > 1:
+        ut = y[ind_u]
+        st = y[ind_speed]
+        vtp = np.sqrt(st**2 - ut**2)
+        vtm = -vtp 
+        print(vtp, vtm)
+        tan = xa[0] / xa[1]
+        fig, ax = plt.subplots()
+        ax.hist(tan, bins=100, density=True, range=(-vlim,vlim))
+        ax.axvline(x=1.0/vtp, color="red", linestyle="dashed")
+        ax.axvline(x=1.0/vtm, color="red", linestyle="dashed")
+        ax.set_title(r"$\tan \theta$")
+        fig.savefig("{}_tan_{}.png".format(htype["perturbation"], var))
+        plt.close()

@@ -1,24 +1,24 @@
 #!/bin/sh
 #set -x
 #operators="linear quadratic cubic quartic"
-operators="quadratic cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
-perturbations="mlef grad" # po srf letkf"
+operators="quadratic" # cubic quadratic-nodiff cubic-nodiff quartic quartic-nodiff"
+perturbations="mlef grad etkf-fh etkf-jh" # po srf letkf"
 #perturbations="mlef08m grad08m mlef05 grad05 mlef08 grad08"
 #perturbations="mlef grad hyvar envar"
 na=20
 linf="F"
 lloc="F"
 ltlm="F"
-irest="T"
+irest="F"
 model=z08
 #vname="oberr"
-exp="cgf_fr-rest"
+exp="cgf_fr"
 echo ${exp} ${vname}
 #sigma="0.5 0.2 0.1 0.05 0.02 0.01 0.005 0.002 0.001 0.0005 0.0002 0.0001"
 #sigma="0.1 0.01 0.001 0.0001"
 #lags="4 6 8 10 12 14 16 18"
 #methods="lb bg cg nm gd cgf_fr cgf_pr cgf_prb"
-methods="dog trn trk tre"
+#methods="dog trn trk tre"
 #rm z08*.txt
 #rm z08*.npy
 #rm z08*.log
@@ -55,13 +55,13 @@ for op in ${operators}; do
     #elif test ${pert} = grad08m ; then
     #  pt=grad
     #fi
-    #pt=${pert:0:4}
-    #if test "${pert:5:2}" = "jh" ; then
-    #  ltlm="T"
-    #elif test "${pert:5:2}" = "fh" ; then
-    #  ltlm="F"
-    #fi
-    pt=${pert}
+    pt=${pert:0:4}
+    if test "${pert:5:2}" = "jh" ; then
+      ltlm="T"
+    elif test "${pert:5:2}" = "fh" ; then
+      ltlm="F"
+    fi
+    #pt=${pert}
     if test ${pt} = mlef ; then
       pt=mlef05
     elif test ${pt} = grad ; then
@@ -78,7 +78,7 @@ for op in ${operators}; do
     tail -1 z08_e_${op}_${pt}_${var}.txt
     #cp z08_e_${op}_${pt}_${vname}${ivar}.txt z08_e_${op}_${pert}_${vname}${ivar}.txt
     #mv z08_e_${op}_${pt}.txt z08_e_${op}_${pert}.txt
-    cp z08_e_${op}_${pt}_${var}.txt z08_e_${op}_${pt}.txt
+    #cp z08_e_${op}_${pt}_${var}.txt z08_e_${op}_${pt}.txt
     mv z08_e_${op}_${pt}_${var}.txt z08_e_${op}_${pert}.txt
     cp z08_dpa_${op}_${pt}.txt z08_dpa_${op}_${pert}.txt
     mv z08_ua_${op}_${pt}.npy z08_ua_${op}_${pert}.npy
@@ -205,5 +205,5 @@ done # for operator
 #  pdfcrop ${model}_e_${op}+nodiff.pdf ${model}_e_${op}+nodiff_${exp}.pdf
 #done
 rm obs*.npy
-mv z08*.txt ${src}/numeric/z08/
+#mv z08*.txt ${src}/numeric/z08/
 mv z08*.npy ${src}/numeric/z08/

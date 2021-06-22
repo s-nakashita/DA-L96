@@ -44,7 +44,7 @@ na =     20 # number of analysis
 
 #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4, \
 #        "quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
-sigma = {"linear": 1.0e-3, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-3, \
+sigma = {"linear": 1.0e-3, "quadratic": 1.0e-4, "cubic": 1.0e-3, "quartic": 1.0e-3, \
     "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-3, "test":8.0e-2}
 htype = {"operator": "linear", "perturbation": "mlef", "gamma": 1}
 linf = False
