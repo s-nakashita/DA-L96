@@ -9,16 +9,17 @@ na = int(sys.argv[3])
 #perts = ["mlef", "grad", "etkf", "po", "srf", "letkf"]
 if model == "z08" or model == "z05":
 #    #perts = ["mlef08m", "grad08m", "mlef08", "grad08", "mlef05", "grad05"]
-    perts = ["mlef", "grad", "etkf-fh", "etkf-jh"]
+    perts = ["mlef", "grad", "etkf-fh", "etkf-jh", "etkf-fh_op-av"]
      #"mlefb", "mleft", "mlef05", "grad05", "mlef3", "mlefw", "gradw"]
-    linestyle = {"mlef":"solid", "grad":"dashed",
+    linestyle = {"mlef":"solid", "grad":"solid",
      "mlef08m":"solid", "grad08m":"dashed",
      "mlef08":"solid", "grad08":"dashed",
      "mlef05":"solid", "grad05":"dashed", "mlefsc":"solid", "mlef3":"dashed", 
      "mlefw":"solid", "gradw":"dashed",
      "mlefh":"dashed",
      "mlefb":"solid", "mleft":"dashed", 
-     "etkf":"solid", "etkf-fh":"solid", "etkf-jh":"dashed"}
+     "etkf":"solid", "etkf-fh":"solid", "etkf-jh":"solid",
+     "etkf-fh_op-av":"dashed"}
     linecolor = {"mlef":'tab:blue',"grad":'tab:orange',
     "mlef08m":'tab:blue',"grad08m":'tab:orange',
     "mlef08":'tab:green',"grad08":'tab:red',
@@ -27,7 +28,8 @@ if model == "z08" or model == "z05":
     "mlef3":"tab:brown",
     "mlefw":"tab:blue", "gradw":"tab:orange", 
     "mlefh":"tab:gray",
-    "etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red'}
+    "etkf":'tab:green',"etkf-fh":'tab:green',"etkf-jh":'tab:red',
+    "etkf-fh_op-av":'tab:green'}
 #    perts = ["mlef", "grad", "etkf", "po", "srf", "letkf", "hyvar", "envar"]
 #    linestyle = {"mlef":"solid", "grad":"dashed", \
 #        "etkf":"solid", "po":'solid',\
@@ -40,7 +42,7 @@ if model == "z08" or model == "z05":
     #na = 20
     #sigma = {"linear": 8.0e-2, "quadratic": 8.0e-2, "cubic": 7.0e-4, "quartic": 7.0e-4,\
     #"quadratic-nodiff": 8.0e-2, "cubic-nodiff": 7.0e-4, "quartic-nodiff": 7.0e-4}
-    sigma = {"linear": 1.0e-3, "quadratic": 1.0e-4, "cubic": 1.0e-3, "quartic": 1.0e-3, \
+    sigma = {"linear": 1.0e-3, "quadratic": 1.0e-3, "cubic": 1.0e-3, "quartic": 1.0e-3, \
     "quadratic-nodiff": 1.0e-3, "cubic-nodiff": 1.0e-3, "quartic-nodiff": 1.0e-3, "test":8.0e-2}
     x = np.arange(na+1)
     x = np.arange(na) + 1
@@ -79,10 +81,18 @@ for pt in perts:
     e = np.loadtxt(f)
     if np.isnan(e).any():
         continue
-    if model == "z08":
-        ax.plot(x, e[1:], linestyle=linestyle[pt], color=linecolor[pt], label=pt)
+    if pt == "grad":
+        label = "mlef-jh"
+    elif pt == "mlef":
+        label = "mlef-fh"
+    elif pt == "etkf-fh":
+        label = "etkf-fh_av-op"
     else:
-        ax.plot(x, e, linestyle=linestyle[pt], color=linecolor[pt], label=pt)
+        label = pt
+    if model == "z08":
+        ax.plot(x, e[1:], linestyle=linestyle[pt], color=linecolor[pt], label=label)
+    else:
+        ax.plot(x, e, linestyle=linestyle[pt], color=linecolor[pt], label=label)
     #ax.plot(x, e, linestyle="solid", color=linecolor[pt], label=pt)
     #f = "{}_e_{}-nodiff_{}.txt".format(model, op, pt)
     #if not os.path.isfile(f):
@@ -94,6 +104,7 @@ for pt in perts:
     #ax.plot(x, e, linestyle="dashed", color=linecolor[pt], label="{}-nodiff".format(pt))
     i += 1
 ax.plot(x, y, linestyle="dotted", color='black')
+plt.rcParams['axes.titlesize'] = 24
 plt.rcParams['axes.labelsize'] = 16 # fontsize arrange
 ax.set(xlabel="analysis cycle", ylabel="RMSE",
         title=op)
